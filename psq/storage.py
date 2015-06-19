@@ -1,4 +1,4 @@
-# Copyright 2015 Google, Inc.
+# Copyright 2015 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -52,14 +52,16 @@ class DatastoreStorage(Storage):
     """
     store_on_status = (FINISHED, FAILED)
 
-    def __init__(self):
-        pass
+    def __init__(self, datastore):
+        super(DatastoreStorage, self).__init__()
+        self.datastore = datastore
 
     def _get_task_key(self, task_id):
-        return datastore.Key('{}-task'.format(DATASTORE_KIND_PREFIX), task_id)
+        return self.datastore.key(
+            '{}-task'.format(DATASTORE_KIND_PREFIX), task_id)
 
     def get_task(self, task_id):
-        entity = datastore.get(self._get_task_key(task_id))
+        entity = self.datastore.get(self._get_task_key(task_id))
         if not entity:
             return None
         return loads(entity['data'])
@@ -75,20 +77,20 @@ class DatastoreStorage(Storage):
         entity['data'] = dumps(task)
         entity['timestamp'] = datetime.utcnow()
 
-        datastore.put(entity)
+        self.datastore.put(entity)
 
     def delete_task(self, task_id):
-        datastore.delete(self._get_task_key(self, task_id))
+        self.datastore.delete(self._get_task_key(task_id))
 
     def list_tasks(self):
-        q = datastore.Query(
+        q = self.datastore.query(
             kind='{}-task'.format(DATASTORE_KIND_PREFIX),
             order=('-timestamp',))
 
         return q.fetch()
 
     def delete_tasks(self):
-        q = datastore.Query(
+        q = self.datastore.query(
             kind='{}-task'.format(DATASTORE_KIND_PREFIX),
             order=('-timestamp',))
         q.keys_only()

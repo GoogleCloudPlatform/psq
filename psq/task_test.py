@@ -1,4 +1,4 @@
-# Copyright 2015 Google, Inc.
+# Copyright 2015 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ from mock import Mock
 
 import psq
 from psq.queue import dummy_context
-from psq.task import FAILED, FINISHED, QUEUED, RETRYING
+from psq.task import FAILED, FINISHED, QUEUED, RETRYING, TimeoutError
 
 
 class MockQueue(psq.Queue):
@@ -107,17 +107,24 @@ class TestTaskResult(TestCase):
 
         r = psq.TaskResult('1', q)
 
-        assert r.result(block=False) is None
+        with self.assertRaises(TimeoutError):
+            r.result(timeout=0.1)
 
         q.storage.get_task.return_value = t
-        assert r.result(block=False) is None
+
+        with self.assertRaises(TimeoutError):
+            r.result(timeout=0.1)
 
         t.start()
-        assert r.result(block=False) is None
+
+        with self.assertRaises(TimeoutError):
+            r.result(timeout=0.1)
 
         t.finish(42)
-        assert r.result(block=False) == 42
+
+        assert r.result(timeout=0.1) == 42
 
         t.fail(ValueError())
+
         with self.assertRaises(ValueError):
-            r.result(block=False)
+            r.result(timeout=0.1)

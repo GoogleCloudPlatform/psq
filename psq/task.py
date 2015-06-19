@@ -1,4 +1,4 @@
-# Copyright 2015 Google, Inc.
+# Copyright 2015 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +13,10 @@
 # limitations under the License.
 
 from __future__ import absolute_import
+
+import time
+
+import six
 
 from .globals import current_queue, task_context
 
@@ -117,23 +121,32 @@ class TaskResult(object):
     def get_task(self):
         return self.storage.get_task(self.task_id)
 
-    def result(self, block=False):
-        """Get the result of the task. If block is True, it will wait until
-        a result is available. Note that if the queue has no persistent task
-        storage, this will never return.
+    def result(self, timeout=None):
+        """Gets the result of the task.
 
-        TODO: timeout.
+        Arguments:
+            timeout: Maximum seconds to wait for a result before raising a
+                TimeoutError. If set to None, this will wait forever. If the
+                queue doesn't store results and timeout is None, this call will
+                never return.
         """
+        start = time.time()
         while True:
             task = self.get_task()
-            if not task:
-                if block:
+            if not task or task.status not in (FINISHED, FAILED):
+                if not timeout:
+                    continue
+                elif time.time() - start < timeout:
                     continue
                 else:
-                    break
+                    raise TimeoutError()
             if task.status == FINISHED:
                 return task.result
             if task.status == FAILED:
                 raise task.result
-            # Task is in another status, break.
-            break
+
+
+if not six.PY3:
+    class TimeoutError(Exception):
+        """The operation exceeded the given deadline."""
+        pass

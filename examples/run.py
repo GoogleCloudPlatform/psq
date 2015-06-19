@@ -12,31 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from contextlib import contextmanager
+from gcloud import pubsub, datastore
+import psq
+import tasks
 
-from werkzeug.local import LocalStack
+PROJECT_ID = 'your-project-id'
 
+pubsub_client = pubsub.Client(project=PROJECT_ID)
+datastore_client = datastore.Client(dataset_id=PROJECT_ID)
 
-# Context-locals for the current queue.
-_queue_stack = LocalStack()
-current_queue = _queue_stack()
-
-
-@contextmanager
-def queue_context(queue):
-    _queue_stack.push(queue)
-    with queue.extra_context() as c:
-        yield c
-    _queue_stack.pop()
+q = psq.Queue(
+    pubsub_client,
+    storage=psq.DatastoreStorage(datastore_client))
 
 
-# Context-locals for the current task.
-_task_stack = LocalStack()
-current_task = _task_stack()
+def main():
+    q.enqueue(tasks.slow_task)
+    q.enqueue(tasks.print_task, "Hello, World")
+    r = q.enqueue(tasks.adder, 1, 5)
+    print(r.result(timeout=10))
 
 
-@contextmanager
-def task_context(task):
-    _task_stack.push(task)
-    yield
-    _task_stack.pop()
+if __name__ == '__main__':
+    main()

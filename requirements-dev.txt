@@ -1,4 +1,4 @@
-gcloud>=0.6.0
+gcloud>=0.7.0
 click>=4.0
 colorlog>=2.6.0
 werkzeug>=0.10.4

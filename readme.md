@@ -2,7 +2,7 @@
 
 ``psq`` is an example Python implementation of a simple [distributed task queue]() using [Google Cloud Pub/Sub](https://cloud.google.com/pubsub/).
 
-``psq`` requires minimal configuration and relies on Pub/Sub to provide scalable and reliable messaging. Pub/sub guarantees your tasks will be delivered to the workers, but ``psq`` doesn't presently guarantee that a task completes execution or exactly-once semantics, though it does allow you to provide your own mechanisms for this.
+``psq`` requires minimal configuration and relies on Cloud Pub/Sub to provide scalable and reliable messaging. 
 
 ``psq`` is intentionally similar to [rq](http://python-rq.org/) and [simpleq](https://github.com/rdegges/simpleq), and takes some inspiration from [celery](http://www.celeryproject.org/) and [this blog post](http://jeffknupp.com/blog/2014/02/11/a-celerylike-python-task-queue-in-55-lines-of-code/).
 
@@ -47,10 +47,21 @@ Now you can enqueue tasks:
 
 In order to get task results, you have to configure storage:
 
-    q = psq.Queue(client, storage=psq.DatastoreStorage())
+    from gcloud import pubsub
+    import psq
 
 
-Now you can get results:
+    PROJECT_ID = 'your-project-id'
+
+    ps_client = pubsub.Client(project=PROJECT_ID)
+    ds_client = datastore.Client(dataset_id=PROJECT_ID)
+
+    q = psq.Queue(
+        ps_client,
+        storage=psq.DatastoreStorage(ds_client))
+
+
+With storage configured, you can get the result of a task:
 
     r = q.enqueue(adder, 5, 6)
     r.result() # -> 11
@@ -61,6 +72,7 @@ You can also define multiple queues:
     fast = psq.Queue(client, 'fast')
     slow = psq.Queue(client, 'slow')
 
+
 ## Things to note
 
 Because ``psq`` is largely similar to ``rq``, similar rules around tasks apply. You can put any Python function call on a queue, provided:
@@ -68,6 +80,14 @@ Because ``psq`` is largely similar to ``rq``, similar rules around tasks apply. 
  * The function is importable by the worker. This means the ``__module__`` that the funciton lives in must be importable. Notably, you can't enqueue functions that are declared in the __main__ module - such as tasks defined in a file that is run directly with ``python`` or via the interactive interpreter.
  * The worker and the applications queueing tasks must share exactly the same source code.
  * The function can't depend on global context such as global variables, current_request, etc. Pass any needed context into the worker at queue time.
+
+### Delivery guarantees 
+
+Pub/sub guarantees your tasks will be delivered to the workers, but ``psq`` doesn't presently guarantee that a task completes execution or exactly-once semantics, though it does allow you to provide your own mechanisms for this. This is similar to Celery's [default](http://celery.readthedocs.org/en/latest/faq.html#faq-acks-late-vs-retry) configuration.
+
+Task completion guarantees can be provided via late ack support. Late ack is possible with Cloud Pub/sub, but it currently not implemented in this library. See [contributing.md](CONTRIBUTING.md).
+
+There are many approaches for exactly-once semantics, such as distributed locks. This is possible in systems such as [zookeeper](http://zookeeper.apache.org/doc/r3.1.2/recipes.html#sc_recipes_Locks) and [redis](http://redis.io/topics/distlock).
 
 ## Running a worker
 
@@ -89,7 +109,9 @@ A normal queue will send a single task to a single worker, spreading your tasks 
 
     broadcast_q.enqueue(restart_apache_task)
 
-Note that broadcast queues do not currently support any form of storage and can't give return values.
+Broadcast queues provide an implementation of the solution described in [Reliable Task Scheduling on Google Compute Engine](https://cloud.google.com/solutions/reliable-task-scheduling-compute-engine).
+
+*Note*: broadcast queues do not currently support any form of storage and do not support return values.
 
 ## Retries
 

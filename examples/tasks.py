@@ -12,31 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from contextlib import contextmanager
-
-from werkzeug.local import LocalStack
+import time
 
 
-# Context-locals for the current queue.
-_queue_stack = LocalStack()
-current_queue = _queue_stack()
+def slow_task():
+    time.sleep(10)
 
 
-@contextmanager
-def queue_context(queue):
-    _queue_stack.push(queue)
-    with queue.extra_context() as c:
-        yield c
-    _queue_stack.pop()
+def print_task(value):
+    print(value)
 
 
-# Context-locals for the current task.
-_task_stack = LocalStack()
-current_task = _task_stack()
-
-
-@contextmanager
-def task_context(task):
-    _task_stack.push(task)
-    yield
-    _task_stack.pop()
+def adder(a, b):
+    return a + b

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright 2015 Google, Inc.
+# Copyright 2015 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -40,11 +40,14 @@ def import_queue(location):
 @click.option(
     '--workers', '-n', type=click.IntRange(1, None),
     help='Number of worker processes.')
+@click.option(
+    '--pid',
+    help='Write the process ID to the specified file.')
 @click.argument(
     'queue',
     nargs=1,
     required=True)
-def main(path, single_threaded, workers, queue):
+def main(path, single_threaded, workers, pid, queue):
     """
     Standalone PSQ worker.
 
@@ -58,12 +61,16 @@ def main(path, single_threaded, workers, queue):
         psqworker --path /opt/app queues.fast
 
     """
-    if not path:
-        path = os.getcwd()
+    if pid:
+        with open(os.path.expanduser(pid), "w") as f:
+            f.write(str(os.getpid()))
 
     # temporary hack
     here = os.path.dirname(os.path.abspath(__file__))
     sys.path = [x for x in sys.path if not x == here]
+
+    if not path:
+        path = os.getcwd()
 
     sys.path.insert(0, path)
 
