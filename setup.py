@@ -20,9 +20,12 @@ from setuptools import setup
 
 here = path.abspath(path.dirname(__file__))
 
-# Get the long description from the relevant file
-with open(path.join(here, 'README.md'), encoding='utf-8') as f:
-    long_description = f.read()
+try:
+    from pypandoc import convert
+    long_description = convert('README.md', 'rst')
+except ImportError:
+    long_description = open('README.md', 'r', encoding='utf-8').read()
+
 
 setup(
     name='psq',
@@ -55,7 +58,7 @@ setup(
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3.4'
+        'Programming Language :: Python :: 3.4',
 
         'Operating System :: POSIX',
         'Operating System :: MacOS',

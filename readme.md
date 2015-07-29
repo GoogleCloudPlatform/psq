@@ -1,6 +1,6 @@
-# psq - Cloud Pub/Sub task queue for Python.
+# psq - Cloud Pub/Sub Task Queue for Python.
 
-``psq`` is an example Python implementation of a simple [distributed task queue]() using [Google Cloud Pub/Sub](https://cloud.google.com/pubsub/).
+``psq`` is an example Python implementation of a simple distributed task queue using [Google Cloud Pub/Sub](https://cloud.google.com/pubsub/).
 
 ``psq`` requires minimal configuration and relies on Cloud Pub/Sub to provide scalable and reliable messaging. 
 
@@ -13,65 +13,74 @@ Install via [pip](https://pypi.python.org/pypi/pip):
 
     pip install psq
 
+## Prerequisites
+
+* A project on the [Google Developers Console](https://console.developers.google.com).
+* The [Google Cloud SDK](https://cloud.google.com/sdk) installed locally.
+* You will need the [Cloud Pub/Sub API enabled](https://console.developers.google.com/flows/enableapi?apiid=datastore,pubsub) on your project. The link will walk you through enabling the API.
+* You will need to run ``gcloud auth`` before running these examples so that authentication to Google Cloud Platform services is handled transparently.
 
 ## Usage
 
-You will need a project on the [Google Developers Console](https://console.developers.google.com) and the [Google Cloud SDK](https://cloud.google.com/sdk) installed locally. You will need the [Cloud Pub/Sub API enabled](https://console.developers.google.com/flows/enableapi?apiid=datastore,pubsub) on your project. You will need to run ``gcloud auth`` before running these examples so that authentication to Google Cloud Platform services is handled transparently.
-
-
 First, create a task:
-    
-    def adder(a, b):
-        return a + b
-    
+
+```python
+def adder(a, b):
+    return a + b
+```
 
 Then, create a pubsub client and a queue:
 
-    from gcloud import pubsub
-    import psq
+```python
+from gcloud import pubsub
+import psq
 
 
-    PROJECT_ID = 'your-project-id'
+PROJECT_ID = 'your-project-id'
 
-    client = pubsub.Client(project=PROJECT_ID)
+client = pubsub.Client(project=PROJECT_ID)
 
-    q = psq.Queue(client)
-
+q = psq.Queue(client)
+```
 
 Now you can enqueue tasks:
 
-    from tasks import adder
+```python
+from tasks import adder
 
-    q.enqueue(adder)
-
+q.enqueue(adder)
+```
 
 In order to get task results, you have to configure storage:
 
-    from gcloud import pubsub
-    import psq
+```python
+from gcloud import pubsub
+import psq
 
 
-    PROJECT_ID = 'your-project-id'
+PROJECT_ID = 'your-project-id'
 
-    ps_client = pubsub.Client(project=PROJECT_ID)
-    ds_client = datastore.Client(dataset_id=PROJECT_ID)
+ps_client = pubsub.Client(project=PROJECT_ID)
+ds_client = datastore.Client(dataset_id=PROJECT_ID)
 
-    q = psq.Queue(
-        ps_client,
-        storage=psq.DatastoreStorage(ds_client))
-
+q = psq.Queue(
+    ps_client,
+    storage=psq.DatastoreStorage(ds_client))
+```
 
 With storage configured, you can get the result of a task:
 
-    r = q.enqueue(adder, 5, 6)
-    r.result() # -> 11
-
+```python
+r = q.enqueue(adder, 5, 6)
+r.result() # -> 11
+```
 
 You can also define multiple queues:
 
-    fast = psq.Queue(client, 'fast')
-    slow = psq.Queue(client, 'slow')
-
+```python
+fast = psq.Queue(client, 'fast')
+slow = psq.Queue(client, 'slow')
+```
 
 ## Things to note
 
@@ -102,12 +111,14 @@ Execute ``psqworker`` in the *same directory where you tasks are defined*:
 
 A normal queue will send a single task to a single worker, spreading your tasks over all workers listening to the same queue. There are also broadcast queues, which will deliver a copy of the task to *every* worker. This is useful in situations where you want every worker to execute the same task, such as installing or upgrading software on every server.
 
-    broadcast_q = psq.BroadcastQueue(client)
+```python
+broadcast_q = psq.BroadcastQueue(client)
 
-    def restart_apache_task():
-        call(["apachectl", "restart"])
+def restart_apache_task():
+    call(["apachectl", "restart"])
 
-    broadcast_q.enqueue(restart_apache_task)
+broadcast_q.enqueue(restart_apache_task)
+```
 
 Broadcast queues provide an implementation of the solution described in [Reliable Task Scheduling on Google Compute Engine](https://cloud.google.com/solutions/reliable-task-scheduling-compute-engine).
 
@@ -117,32 +128,36 @@ Broadcast queues provide an implementation of the solution described in [Reliabl
 
 Raising ``psq.Retry`` in your task will cause it to be retried.
 
-    from psq import Retry
+```python
+from psq import Retry
 
-    def retry_if_fail(self):
-        try:
-            r = requests.get('http://some.flaky.service.com')
-        except Exception as e:
-            logging.error(e)
-            raise Retry()
-
+def retry_if_fail(self):
+    try:
+        r = requests.get('http://some.flaky.service.com')
+    except Exception as e:
+        logging.error(e)
+        raise Retry()
+```
 
 ## Flask & other contexts
 
 You can bind an extra context manager to the queue.
 
-    app = Flask(__name__)
+```python
+app = Flask(__name__)
 
-    q = psq.Queue(extra_context=app.app_context)
-
+q = psq.Queue(extra_context=app.app_context)
+```
 
 This will ensure that the context is available in your tasks, which is useful for things such as database connections, etc.:
 
-    from flask import current_app
 
-    def flasky_task():
-        backend = current_app.config['BACKEND']
+```python
+from flask import current_app
 
+def flasky_task():
+    backend = current_app.config['BACKEND']
+```
 
 ## Ideas for improvements
 
