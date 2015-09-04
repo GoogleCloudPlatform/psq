@@ -22,9 +22,9 @@ here = path.abspath(path.dirname(__file__))
 
 try:
     from pypandoc import convert
-    long_description = convert('README.md', 'rst')
+    long_description = convert('readme.md', 'rst')
 except ImportError:
-    long_description = open('README.md', 'r', encoding='utf-8').read()
+    long_description = open('readme.md', 'r', encoding='utf-8').read()
 
 
 setup(
