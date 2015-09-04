@@ -30,7 +30,7 @@ except ImportError:
 setup(
     name='psq',
 
-    version='0.1.1',
+    version='0.1.2',
 
     description='A simple task queue using Google Cloud Pub/Sub',
     long_description=long_description,
