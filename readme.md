@@ -1,5 +1,7 @@
 # psq - Cloud Pub/Sub Task Queue for Python.
 
+[![Build Status](https://travis-ci.org/GoogleCloudPlatform/psq.svg)](https://travis-ci.org/GoogleCloudPlatform/psq)
+
 ``psq`` is an example Python implementation of a simple distributed task queue using [Google Cloud Pub/Sub](https://cloud.google.com/pubsub/).
 
 ``psq`` requires minimal configuration and relies on Cloud Pub/Sub to provide scalable and reliable messaging. 
