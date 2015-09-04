@@ -16,13 +16,16 @@ from __future__ import absolute_import
 
 import time
 
-import six
-
 from .globals import current_queue, task_context
 
 
 class Retry(Exception):
     """When raised within a task, the task will be re-queued"""
+    pass
+
+
+class TimeoutError(Exception):
+    """The operation exceeded the given deadline."""
     pass
 
 
@@ -144,9 +147,3 @@ class TaskResult(object):
                 return task.result
             if task.status == FAILED:
                 raise task.result
-
-
-if not six.PY3:
-    class TimeoutError(Exception):
-        """The operation exceeded the given deadline."""
-        pass
