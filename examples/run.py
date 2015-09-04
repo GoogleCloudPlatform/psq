@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from gcloud import pubsub, datastore
+from gcloud import datastore, pubsub
 import psq
 import tasks
 
