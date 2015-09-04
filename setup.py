@@ -13,18 +13,11 @@
 # limitations under the License.
 
 from codecs import open
-from os import path
 
 from setuptools import setup
 
 
-here = path.abspath(path.dirname(__file__))
-
-try:
-    from pypandoc import convert
-    long_description = convert('readme.md', 'rst')
-except ImportError:
-    long_description = open('readme.md', 'r', encoding='utf-8').read()
+long_description = open('README.rst', 'r', encoding='utf-8').read()
 
 
 setup(
