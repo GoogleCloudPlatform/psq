@@ -1,6 +1,6 @@
 # psq - Cloud Pub/Sub Task Queue for Python.
 
-[![Build Status](https://travis-ci.org/GoogleCloudPlatform/psq.svg)](https://travis-ci.org/GoogleCloudPlatform/psq) [![Coverage Status](https://coveralls.io/repos/GoogleCloudPlatform/psq/badge.svg?branch=master&service=github)](https://coveralls.io/github/GoogleCloudPlatform/psq?branch=master)
+[![Build Status](https://travis-ci.org/GoogleCloudPlatform/psq.svg)](https://travis-ci.org/GoogleCloudPlatform/psq) [![Coverage Status](https://coveralls.io/repos/GoogleCloudPlatform/psq/badge.svg?branch=master&service=github)](https://coveralls.io/github/GoogleCloudPlatform/psq?branch=master) [![PyPI Version](https://img.shields.io/pypi/v/psq.svg)](https://pypi.python.org/pypi/psq)
 
 ``psq`` is an example Python implementation of a simple distributed task queue using [Google Cloud Pub/Sub](https://cloud.google.com/pubsub/).
 
