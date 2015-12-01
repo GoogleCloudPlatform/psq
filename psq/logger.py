@@ -21,20 +21,24 @@ from colorlog import ColoredFormatter
 logger = logging.getLogger('psq')
 logger.setLevel(logging.INFO)
 
-handler = logging.StreamHandler()
 
-formatter = ColoredFormatter(
-    "%(log_color)s%(levelname)-8s%(reset)s %(asctime)s %(green)s%(name)s"
-    "%(reset)s %(message)s",
-    reset=True,
-    log_colors={
-        'DEBUG':    'cyan',
-        'INFO':     'blue',
-        'WARNING':  'yellow',
-        'ERROR':    'red',
-        'CRITICAL': 'red,bg_white',
-    }
-)
+def setup_logging():
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    handler = logging.StreamHandler()
 
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+    formatter = ColoredFormatter(
+        "%(log_color)s%(levelname)-8s%(reset)s %(asctime)s %(green)s%(name)s"
+        "%(reset)s %(message)s",
+        reset=True,
+        log_colors={
+            'DEBUG':    'cyan',
+            'INFO':     'blue',
+            'WARNING':  'yellow',
+            'ERROR':    'red',
+            'CRITICAL': 'red,bg_white',
+        }
+    )
+
+    handler.setFormatter(formatter)
+    root_logger.addHandler(handler)

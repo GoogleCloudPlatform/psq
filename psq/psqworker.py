@@ -22,6 +22,8 @@ import sys
 
 import click
 
+from .logger import setup_logging
+
 
 def import_queue(location):
     module, attr = location.rsplit('.', 1)
@@ -61,6 +63,8 @@ def main(path, single_threaded, workers, pid, queue):
         psqworker --path /opt/app queues.fast
 
     """
+    setup_logging()
+
     if pid:
         with open(os.path.expanduser(pid), "w") as f:
             f.write(str(os.getpid()))
