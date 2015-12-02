@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from datetime import datetime
 
 from gcloud import datastore
+from six.moves import range
 
 from .task import FAILED, FINISHED
 from .utils import dumps, loads
@@ -31,8 +32,6 @@ class Storage(object):
     storage, but you can not get the return value of a task without it.
     This base class does not store any data and just stubs out the methods.
     """
-    def __init__(self):
-        pass
 
     def get_task(self, task_id):
         pass
@@ -99,8 +98,8 @@ class DatastoreStorage(Storage):
 
         def chunks(l, n):
             """Yield successive n-sized chunks from l."""
-            for i in xrange(0, len(l), n):
+            for i in range(0, len(l), n):
                 yield l[i:i+n]
 
         for chunk in chunks(keys, 100):
-            datastore.delete_multi(chunk)
+            self.datastore.delete_multi(chunk)
