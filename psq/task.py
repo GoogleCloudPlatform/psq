@@ -14,7 +14,10 @@
 
 from __future__ import absolute_import
 
+import importlib
 import time
+
+from six import string_types
 
 from .globals import current_queue, task_context
 
@@ -103,10 +106,23 @@ class Task(object):
         """
         return task_context(self)
 
+    def _import_function(self):
+        if not isinstance(self.f, string_types):
+            return
+
+        mod_name, func_name = self.f.rsplit('.', 1)
+        module = importlib.import_module(mod_name)
+
+        self.f = getattr(module, func_name)
+
     __call__ = execute
 
     def __str__(self):
         return '<Task {}>'.format(self.summary())
+
+    def __setstate__(self, d):
+        self.__dict__ = d
+        self._import_function()
 
 
 class TaskResult(object):

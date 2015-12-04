@@ -108,11 +108,13 @@ Because ``psq`` is largely similar to ``rq``, similar rules around tasks
 apply. You can put any Python function call on a queue, provided:
 
 -  The function is importable by the worker. This means the
-   ``__module__`` that the funciton lives in must be importable.
+   ``__module__`` that the function lives in must be importable.
    Notably, you can't enqueue functions that are declared in the
    **main** module - such as tasks defined in a file that is run
    directly with ``python`` or via the interactive interpreter.
--  The worker and the applications queueing tasks must share exactly the
+-  The function can be a string, but it must be the absolutely importable path
+   to a function that the worker can import. Otherwise, the task will fail.
+-  The worker and the applications queuing tasks must share exactly the
    same source code.
 -  The function can't depend on global context such as global variables,
    current\_request, etc. Pass any needed context into the worker at
