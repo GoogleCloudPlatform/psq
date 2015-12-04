@@ -25,7 +25,7 @@ class MockQueue(psq.Queue):
     def __init__(self):
         self.topic = Mock()
         self.storage = Mock()
-        self.context = dummy_context
+        self.extra_context = dummy_context
         self.enqueue_task = Mock()
 
 
@@ -52,6 +52,14 @@ class TestTask(TestCase):
         assert t.status == QUEUED
         assert t.result is None
 
+        # Test with global queue context
+        with q.queue_context():
+            t.execute()
+
+            assert t.status == FINISHED
+            assert t.result == '42'
+            t.reset()
+
         def fails():
             raise ValueError()
 
@@ -75,7 +83,7 @@ class TestTask(TestCase):
         assert t.retries == 1
         assert q.enqueue_task.called
 
-    def test_context(self):
+    def testContext(self):
         q = MockQueue()
         t = psq.Task('1', sum, (), {})
 
@@ -97,6 +105,11 @@ class TestTask(TestCase):
         t.execute(q)
         assert t.result is True
 
+    def testSummary(self):
+        t = psq.Task('1', sum, ('2'), {'3': '4'})
+        assert t.summary() == '1: sum(2, {\'3\': \'4\'}) -> None (queued)'
+        assert t.summary() in str(t)
+
 
 class TestTaskResult(TestCase):
 
@@ -105,7 +118,10 @@ class TestTaskResult(TestCase):
         q = MockQueue()
         q.storage.get_task.return_value = None
 
-        r = psq.TaskResult('1', q)
+        with q.queue_context():
+            r = psq.TaskResult('1')
+
+        assert r.storage == q.storage
 
         with self.assertRaises(TimeoutError):
             r.result(timeout=0.1)
@@ -128,3 +144,16 @@ class TestTaskResult(TestCase):
 
         with self.assertRaises(ValueError):
             r.result(timeout=0.1)
+
+        # Test without timeout. This is tricky.
+
+        t.reset()
+
+        def side_effect(_):
+            t.finish(43)
+            q.storage.get_task.return_value = t
+            q.storage.get_task.side_effect = None
+
+        q.storage.get_task.side_effect = side_effect
+
+        assert r.result() == 43

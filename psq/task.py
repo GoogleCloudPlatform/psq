@@ -143,7 +143,8 @@ class TaskResult(object):
                     continue
                 else:
                     raise TimeoutError()
-            if task.status == FINISHED:
-                return task.result
+
             if task.status == FAILED:
                 raise task.result
+
+            return task.result

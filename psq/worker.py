@@ -19,17 +19,12 @@ import signal
 import time
 
 from .logger import logger
-from .queue import Queue
 from .utils import measure_time
 
 
 class Worker(object):
     def __init__(self, queue='default'):
-        if isinstance(queue, str):
-            self.queue = Queue(name=queue)
-        else:
-            self.queue = queue
-
+        self.queue = queue
         self.storage = self.queue.storage
         self.tasks_per_poll = 1
 
@@ -61,11 +56,13 @@ class Worker(object):
 
 
 class MultiprocessWorker(Worker):
-    def __init__(self, queue='default', num_workers=None, *args, **kwargs):
+    def __init__(self, queue, num_workers=None, *args, **kwargs):
         super(MultiprocessWorker, self).__init__(queue, *args, **kwargs)
 
         if not num_workers:
             num_workers = multiprocessing.cpu_count()
+
+        self._has_closed = False
 
         self.pool = multiprocessing.Pool(
             processes=num_workers,
@@ -80,6 +77,9 @@ class MultiprocessWorker(Worker):
 
     def listen(self):
         super(MultiprocessWorker, self).listen()
+
+        if not self._has_closed:  # pragma: no cover
+            self.pool.close()
 
         logger.info('Waiting for any running tasks to complete...')
 
@@ -102,7 +102,7 @@ class MultiprocessWorker(Worker):
             _execute_task_in_worker,
             (task,))
 
-    def _install_signal_handlers(self):
+    def _install_signal_handlers(self):  # pragma: no cover
 
         # Second interrupt causes forced shutdown via pool.terminate().
         def force_exit(signum, frame):
@@ -117,6 +117,7 @@ class MultiprocessWorker(Worker):
             logger.warning('Attempting graceful shutdown. Pressing Ctrl+C'
                            ' again will cause a forced exit.')
             self.pool.close()
+            self._has_closed = True
             raise KeyboardInterrupt()
 
         signal.signal(signal.SIGINT, graceful_exit)
@@ -128,7 +129,7 @@ class MultiprocessWorker(Worker):
 _worker_queue = None
 
 
-def _init_worker_process(queue):
+def _init_worker_process(queue):  # pragma: no cover
     # Ignore interrupts in this process. The main process will handle these
     # interrupts to allow a graceful shutdown.
     signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -137,7 +138,7 @@ def _init_worker_process(queue):
     _worker_queue = queue
 
 
-def _execute_task_in_worker(task):
+def _execute_task_in_worker(task):  # pragma: no cover
     # Get the queue assigned to this worker
     worker_name = multiprocessing.current_process().name
 

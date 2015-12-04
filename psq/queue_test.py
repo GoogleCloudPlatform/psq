@@ -30,7 +30,8 @@ class MockMessage(object):
 
 class TestQueue(TestCase):
 
-    def testCreation(self):
+    def test_creation(self):
+        # Test the case where queue needs to create the topic.
         pubsub = Mock()
         topic = Mock()
         topic.exists.return_value = False
@@ -45,16 +46,28 @@ class TestQueue(TestCase):
         sub = Mock()
         sub.exists.return_value = False
 
-        with patch('gcloud.pubsub.Subscription') as sub_ctr:
-            sub_ctr.return_value = sub
+        # Test the case where it needs to create the subcription.
+        with patch('gcloud.pubsub.Subscription') as SubscriptionMock:
+            SubscriptionMock.return_value = sub
             rsub = q._get_or_create_subscription()
 
             assert rsub == sub
-            assert sub_ctr.called_with('psq-default-shared', topic)
+            assert SubscriptionMock.called_with('psq-default-shared', topic)
             assert sub.exists.called
             assert sub.create.called
 
-    def testQueue(self):
+        # Test case where subscription exists and it should re-use it.
+        with patch('gcloud.pubsub.Subscription') as SubscriptionMock:
+            sub.reset_mock()
+            SubscriptionMock.return_value = sub
+            sub.exists.return_value = True
+            rsub = q._get_or_create_subscription()
+
+            assert rsub == sub
+            assert not sub.create.called
+
+    def test_queue(self):
+        # Test queueing tasks.
         with patch('psq.queue.Queue._get_or_create_topic'):
             q = Queue(Mock())
             q.storage.put_task = Mock()
@@ -70,13 +83,24 @@ class TestQueue(TestCase):
 
             assert r.task_id == t.id
 
-    def testDequeue(self):
+    def test_dequeue(self):
+        # Test dequeueing (fetching) tasks.
         with patch('psq.queue.Queue._get_or_create_topic'):
             q = Queue(Mock())
             t = Task('1', sum, (1, 2), {'arg': 'c'})
             sub_mock = Mock()
             q._get_or_create_subscription = Mock(return_value=sub_mock)
 
+            # No messages
+            sub_mock.pull.return_value = []
+
+            tasks = q.dequeue()
+
+            assert sub_mock.pull.called
+            assert not tasks
+
+            # One Message
+            sub_mock.pull.reset_mock()
             sub_mock.pull.return_value = [
                 ('ack_id', MockMessage(dumps(t)))]
 
@@ -89,6 +113,7 @@ class TestQueue(TestCase):
             assert tasks[0].args == t.args
             assert tasks[0].kwargs == t.kwargs
 
+            # Bad message
             sub_mock.pull.reset_mock()
             sub_mock.acknowledge.reset_mock()
             sub_mock.pull.return_value = [
@@ -100,7 +125,8 @@ class TestQueue(TestCase):
             assert sub_mock.pull.called
             sub_mock.acknowledge.assert_called_once_with(['ack_id'])
 
-    def testContext(self):
+    def test_context(self):
+        # Test queue-local context.
         pubsub = Mock()
         pubsub.topic.return_value = Mock()
         q = Queue(pubsub)
@@ -108,6 +134,7 @@ class TestQueue(TestCase):
         with q.queue_context():
             assert current_queue == q
 
+        # Test additional context manager.
         spy = Mock()
 
         @contextmanager
@@ -120,10 +147,19 @@ class TestQueue(TestCase):
         with q.queue_context():
             assert spy.called
 
+    def test_cleanup(self):
+        pubsub = Mock()
+        pubsub.topic.return_value = Mock()
+        q = Queue(pubsub)
+
+        q.cleanup()
+
 
 class TestBroadcastQueue(TestCase):
 
-    def testCleanup(self):
+    def test_cleanup(self):
+        # Broadcast queue should delete its own subscription, as it's not
+        # shared.
         pubsub = Mock()
         pubsub.topic.return_value = Mock()
         q = BroadcastQueue(pubsub)
@@ -131,7 +167,11 @@ class TestBroadcastQueue(TestCase):
         q.cleanup()
         assert q.subscription.delete.called
 
-    def testCreateSubscription(self):
+        # test without subscription
+        q.subscription = None
+        q.cleanup()
+
+    def test_create_subscription(self):
         pubsub = Mock()
         pubsub.topic.return_value = Mock()
         q = BroadcastQueue(pubsub)
@@ -139,12 +179,23 @@ class TestBroadcastQueue(TestCase):
         sub = Mock()
         sub.exists.return_value = False
 
-        with patch('gcloud.pubsub.Subscription') as sub_ctr:
-            sub_ctr.return_value = sub
+        # Test to make sure it creates a unique (non-shared) subscription.
+        with patch('gcloud.pubsub.Subscription') as SubscriptionMock:
+            SubscriptionMock.return_value = sub
             rsub = q._get_or_create_subscription()
 
             assert rsub == sub
-            assert 'worker' in sub_ctr.call_args[0][0]
-            assert 'broadcast' in sub_ctr.call_args[0][0]
+            assert 'worker' in SubscriptionMock.call_args[0][0]
+            assert 'broadcast' in SubscriptionMock.call_args[0][0]
             assert sub.exists.called
             assert sub.create.called
+
+        # Test reusing existing
+        with patch('gcloud.pubsub.Subscription') as SubscriptionMock:
+            sub.reset_mock()
+            SubscriptionMock.return_value = sub
+            sub.exists.return_value = True
+            rsub = q._get_or_create_subscription()
+
+            assert rsub == sub
+            assert not sub.create.called

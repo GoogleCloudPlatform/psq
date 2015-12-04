@@ -22,7 +22,7 @@ logger = logging.getLogger('psq')
 logger.setLevel(logging.INFO)
 
 
-def setup_logging():
+def setup_logging():  # pragma: no cover
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.INFO)
     handler = logging.StreamHandler()
