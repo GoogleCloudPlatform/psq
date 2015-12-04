@@ -17,6 +17,7 @@ from unittest import TestCase
 from mock import Mock
 
 import psq
+from psq import utils
 from psq.queue import dummy_context
 from psq.task import FAILED, FINISHED, QUEUED, RETRYING, TimeoutError
 
@@ -27,6 +28,10 @@ class MockQueue(psq.Queue):
         self.storage = Mock()
         self.extra_context = dummy_context
         self.enqueue_task = Mock()
+
+
+def dummy_task_func():
+    return 'Hello'
 
 
 class TestTask(TestCase):
@@ -109,6 +114,36 @@ class TestTask(TestCase):
         t = psq.Task('1', sum, ('2'), {'3': '4'})
         assert t.summary() == '1: sum(2, {\'3\': \'4\'}) -> None (queued)'
         assert t.summary() in str(t)
+
+    def test_string_function(self):
+        t = psq.Task(
+            '1', 'psq.task_test.dummy_task_func', (), {})
+
+        unpickled = utils.unpickle(utils.dumps(t))
+
+        assert unpickled.f == dummy_task_func
+
+        q = MockQueue()
+        with q.queue_context():
+            unpickled.execute()
+            assert unpickled.result == 'Hello'
+
+        # Bad functions/modules
+        t = psq.Task(
+            '1', 'psq.task_test.nonexistant_function', (), {})
+
+        self.assertRaises(
+            utils.UnpickleError,
+            utils.unpickle,
+            utils.dumps(t))
+
+        t = psq.Task(
+            '1', 'psq.nonexistant_module.nonexistant_function', (), {})
+
+        self.assertRaises(
+            utils.UnpickleError,
+            utils.unpickle,
+            utils.dumps(t))
 
 
 class TestTaskResult(TestCase):
