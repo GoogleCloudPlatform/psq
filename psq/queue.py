@@ -19,6 +19,7 @@ from uuid import uuid4
 
 from gcloud import pubsub
 
+from .context_local_pubsub_connection import ContextLocalPubsubConnection
 from .globals import queue_context
 from .logger import logger
 from .storage import Storage
@@ -33,6 +34,8 @@ class Queue(object):
     def __init__(self, pubsub, name='default', storage=None,
                  extra_context=None):
         self.pubsub = pubsub
+        self.pubsub.connection = ContextLocalPubsubConnection(
+            self.pubsub.connection)
         self.name = name
         self.topic = self._get_or_create_topic()
         self.storage = storage or Storage()
