@@ -17,8 +17,8 @@ from __future__ import absolute_import
 from contextlib import contextmanager
 from uuid import uuid4
 
-import gcloud.exceptions
 from gcloud import pubsub
+import gcloud.exceptions
 
 from .context_local_pubsub_connection import ContextLocalPubsubConnection
 from .globals import queue_context
