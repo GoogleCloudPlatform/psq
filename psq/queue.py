@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from contextlib import contextmanager
 from uuid import uuid4
 
+import gcloud.exceptions
 from gcloud import pubsub
 
 from .context_local_pubsub_connection import ContextLocalPubsubConnection
@@ -47,8 +48,10 @@ class Queue(object):
 
         topic = self.pubsub.topic(topic_name)
 
-        if not topic.exists():
+        try:
             topic.create()
+        except gcloud.exceptions.Conflict:
+            pass
 
         return topic
 
@@ -64,7 +67,11 @@ class Queue(object):
         if not subscription.exists():
             logger.info("Creating shared subscription {}".format(
                 subscription_name))
-            subscription.create()
+            try:
+                subscription.create()
+            except gcloud.exceptions.Conflict:
+                # Another worker created the subscription before us, ignore.
+                pass
 
         return subscription
 

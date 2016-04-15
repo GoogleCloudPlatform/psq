@@ -16,6 +16,7 @@ from contextlib import contextmanager
 from pickle import dumps
 from unittest import TestCase
 
+import gcloud.exceptions
 from mock import Mock, patch
 
 from psq import current_queue
@@ -40,8 +41,19 @@ class TestQueue(TestCase):
         q = Queue(pubsub)
 
         assert pubsub.topic.called
-        assert topic.exists.called
+        assert topic.create.called
         assert q.topic == topic
+
+        sub = Mock()
+        sub.exists.return_value = False
+
+    def test_get_or_create_subscription(self):
+        pubsub = Mock()
+        topic = Mock()
+        topic.exists.return_value = True
+        pubsub.topic.return_value = topic
+
+        q = Queue(pubsub)
 
         sub = Mock()
         sub.exists.return_value = False
@@ -65,6 +77,32 @@ class TestQueue(TestCase):
 
             assert rsub == sub
             assert not sub.create.called
+
+        # Test case where subscription gets created after we check that it
+        # doesn't exist.
+
+        with patch('gcloud.pubsub.Subscription') as SubscriptionMock:
+            sub.reset_mock()
+            SubscriptionMock.return_value = sub
+            sub.exists.return_value = False
+            sub.create.side_effect = gcloud.exceptions.Conflict('')
+            rsub = q._get_or_create_subscription()
+
+            assert sub.create.called
+            assert rsub == sub
+
+    def test_creation_existing_topic(self):
+        # Test the case where queue needs to create the topic.
+        pubsub = Mock()
+        topic = Mock()
+        topic.create.side_effect = gcloud.exceptions.Conflict('')
+        pubsub.topic.return_value = topic
+
+        q = Queue(pubsub)
+
+        assert pubsub.topic.called
+        assert topic.create.called
+        assert q.topic == topic
 
     def test_queue(self):
         # Test queueing tasks.
