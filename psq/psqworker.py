@@ -17,12 +17,34 @@
 from __future__ import absolute_import
 
 from importlib import import_module
+import logging
 import os
 import sys
 
 import click
+from colorlog import ColoredFormatter
 
-from .logger import setup_logging
+
+def setup_logging():  # pragma: no cover
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    handler = logging.StreamHandler()
+
+    formatter = ColoredFormatter(
+        "%(log_color)s%(levelname)-8s%(reset)s %(asctime)s %(green)s%(name)s"
+        "%(reset)s %(message)s",
+        reset=True,
+        log_colors={
+            'DEBUG':    'cyan',
+            'INFO':     'blue',
+            'WARNING':  'yellow',
+            'ERROR':    'red',
+            'CRITICAL': 'red,bg_white',
+        }
+    )
+
+    handler.setFormatter(formatter)
+    root_logger.addHandler(handler)
 
 
 def import_queue(location):

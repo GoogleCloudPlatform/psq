@@ -14,14 +14,17 @@
 
 from __future__ import absolute_import
 
+import logging
 import multiprocessing
 import signal
 import time
 
 from retrying import retry
 
-from .logger import logger
 from .utils import measure_time
+
+
+logger = logging.getLogger(__name__)
 
 
 class Worker(object):

@@ -15,6 +15,7 @@
 from __future__ import absolute_import
 
 from contextlib import contextmanager
+import logging
 from uuid import uuid4
 
 from gcloud import pubsub
@@ -22,11 +23,12 @@ import gcloud.exceptions
 
 from .context_local_pubsub_connection import ContextLocalPubsubConnection
 from .globals import queue_context
-from .logger import logger
 from .storage import Storage
 from .task import Task, TaskResult
 from .utils import dumps, unpickle, UnpickleError
 
+
+logger = logging.getLogger(__name__)
 
 PUBSUB_OBJECT_PREFIX = 'psq'
 

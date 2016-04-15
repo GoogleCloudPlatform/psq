@@ -16,9 +16,8 @@ from __future__ import absolute_import
 
 from contextlib import contextmanager
 from functools import partial
+import logging
 import time
-
-from .logger import logger
 
 try:
     import cPickle as pickle
@@ -26,6 +25,7 @@ except ImportError:  # pragma: no cover
     import pickle
 
 
+logger = logging.getLogger(__name__)
 dumps = partial(pickle.dumps, protocol=pickle.HIGHEST_PROTOCOL)
 loads = pickle.loads
 
