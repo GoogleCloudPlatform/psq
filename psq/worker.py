@@ -36,7 +36,8 @@ class Worker(object):
         @retry(
             stop_max_attempt_number=self.max_sequential_errors,
             # Wait 2^n * 1 seconds between retries, up to 10 seconds.
-            wait_exponential_multiplier=1000, wait_exponential_max=10000)
+            wait_exponential_multiplier=1000, wait_exponential_max=10000,
+            retry_on_exception=lambda e: not isinstance(e, KeyboardInterrupt))
         def inner():
             return self.queue.dequeue(max=self.tasks_per_poll, block=True)
         return inner()

@@ -36,15 +36,15 @@ class MockQueue(Queue):
         """If there's any tasks, it'll return those. Once it runs out,
         it returns an empty list of tasks, then the next time it's called it
         will raise a KeyboardInterrupt."""
+
         if self._raise:
             raise KeyboardInterrupt()
 
-        if not len(self._tasks):
-            self._raise = True
-            return []
-
         tasks = self._tasks[:max]
         self._tasks = self._tasks[max:]
+
+        if not tasks:
+            self._raise = True
 
         return tasks
 
