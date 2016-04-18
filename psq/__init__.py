@@ -19,6 +19,8 @@ Homepage: https://github.com/GoogleCloudPlatform/psq
 
 from __future__ import absolute_import
 
+import logging
+
 from .globals import current_queue, current_task, queue_context, task_context
 from .queue import BroadcastQueue, Queue
 from .storage import DatastoreStorage, Storage
@@ -41,3 +43,7 @@ __all__ = [
     'current_task',
     'task_context'
 ]
+
+
+# Set default logging handler to avoid "No handler found" warnings.
+logging.getLogger(__name__).addHandler(logging.NullHandler())

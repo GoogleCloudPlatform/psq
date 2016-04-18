@@ -90,7 +90,7 @@ class TestDatastoreStorage(TestCase):
         storage = DatastoreStorage(datastore_mock)
         q_mock = Mock()
         q_mock.fetch.return_value = [
-            Mock(key=datastore.Key('task', n, dataset_id='test'))
+            Mock(key=datastore.Key('task', n, project='test'))
             for n in range(102)]
         datastore_mock.query.return_value = q_mock
 

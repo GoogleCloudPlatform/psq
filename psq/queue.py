@@ -15,17 +15,20 @@
 from __future__ import absolute_import
 
 from contextlib import contextmanager
+import logging
 from uuid import uuid4
 
 from gcloud import pubsub
+import gcloud.exceptions
 
 from .context_local_pubsub_connection import ContextLocalPubsubConnection
 from .globals import queue_context
-from .logger import logger
 from .storage import Storage
 from .task import Task, TaskResult
 from .utils import dumps, unpickle, UnpickleError
 
+
+logger = logging.getLogger(__name__)
 
 PUBSUB_OBJECT_PREFIX = 'psq'
 
@@ -48,7 +51,12 @@ class Queue(object):
         topic = self.pubsub.topic(topic_name)
 
         if not topic.exists():
-            topic.create()
+            logger.info("Creating topic {}".format(topic_name))
+            try:
+                topic.create()
+            except gcloud.exceptions.Conflict:
+                # Another process created the topic before us, ignore.
+                pass
 
         return topic
 
@@ -64,7 +72,11 @@ class Queue(object):
         if not subscription.exists():
             logger.info("Creating shared subscription {}".format(
                 subscription_name))
-            subscription.create()
+            try:
+                subscription.create()
+            except gcloud.exceptions.Conflict:
+                # Another worker created the subscription before us, ignore.
+                pass
 
         return subscription
 

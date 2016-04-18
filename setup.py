@@ -23,7 +23,7 @@ long_description = open('README.rst', 'r', encoding='utf-8').read()
 setup(
     name='psq',
 
-    version='0.2.1',
+    version='0.3.0',
 
     description='A simple task queue using Google Cloud Pub/Sub',
     long_description=long_description,
@@ -62,7 +62,12 @@ setup(
 
     packages=['psq'],
 
-    install_requires=['gcloud>=0.8.0', 'werkzeug', 'click', 'colorlog'],
+    install_requires=[
+        'gcloud>=0.9.0',
+        'retrying>=1.0.0,<2.0.0',
+        'werkzeug>=0.10.0,<1.0.0',
+        'click>=4.0,<5.0',
+        'colorlog>=2.6.0,<3.0.0'],
 
     entry_points={
         'console_scripts': [

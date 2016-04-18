@@ -14,12 +14,17 @@
 
 from __future__ import absolute_import
 
+import logging
 import multiprocessing
 import signal
 import time
 
-from .logger import logger
+from retrying import retry
+
 from .utils import measure_time
+
+
+logger = logging.getLogger(__name__)
 
 
 class Worker(object):
@@ -27,15 +32,25 @@ class Worker(object):
         self.queue = queue
         self.storage = self.queue.storage
         self.tasks_per_poll = 1
+        self.max_sequential_errors = 5
+
+    def _safe_dequeue(self):
+        """Dequeues tasks while dealing with transient errors."""
+        @retry(
+            stop_max_attempt_number=self.max_sequential_errors,
+            # Wait 2^n * 1 seconds between retries, up to 10 seconds.
+            wait_exponential_multiplier=1000, wait_exponential_max=10000,
+            retry_on_exception=lambda e: not isinstance(e, KeyboardInterrupt))
+        def inner():
+            return self.queue.dequeue(max=self.tasks_per_poll, block=True)
+        return inner()
 
     def listen(self):
         logger.info('Listening, press Ctrl+C to exit.')
         try:
             while True:
 
-                tasks = self.queue.dequeue(
-                    max=self.tasks_per_poll,
-                    block=True)
+                tasks = self._safe_dequeue()
 
                 if not tasks:
                     continue

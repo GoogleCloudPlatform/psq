@@ -19,7 +19,7 @@ import tasks
 PROJECT_ID = 'your-project-id'
 
 pubsub_client = pubsub.Client(project=PROJECT_ID)
-datastore_client = datastore.Client(dataset_id=PROJECT_ID)
+datastore_client = datastore.Client(project=PROJECT_ID)
 
 q = psq.Queue(
     pubsub_client,

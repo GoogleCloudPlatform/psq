@@ -81,7 +81,7 @@ In order to get task results, you have to configure storage:
     PROJECT_ID = 'your-project-id'
 
     ps_client = pubsub.Client(project=PROJECT_ID)
-    ds_client = datastore.Client(dataset_id=PROJECT_ID)
+    ds_client = datastore.Client(project=PROJECT_ID)
 
     q = psq.Queue(
         ps_client,
