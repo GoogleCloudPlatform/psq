@@ -95,6 +95,7 @@ class TestQueue(TestCase):
         # Test the case where queue needs to create the topic.
         pubsub = Mock()
         topic = Mock()
+        topic.exists.return_value = False
         topic.create.side_effect = gcloud.exceptions.Conflict('')
         pubsub.topic.return_value = topic
 

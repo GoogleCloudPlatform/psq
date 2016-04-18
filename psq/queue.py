@@ -50,10 +50,13 @@ class Queue(object):
 
         topic = self.pubsub.topic(topic_name)
 
-        try:
-            topic.create()
-        except gcloud.exceptions.Conflict:
-            pass
+        if not topic.exists():
+            logger.info("Creating topic {}".format(topic_name))
+            try:
+                topic.create()
+            except gcloud.exceptions.Conflict:
+                # Another process created the topic before us, ignore.
+                pass
 
         return topic
 
