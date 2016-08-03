@@ -51,7 +51,7 @@ class Task(object):
     def reset(self):
         self.status = QUEUED
         self.result = None
-        self.retires = 0
+        self.retries = 0
 
     def retry(self):
         self.status = RETRYING
