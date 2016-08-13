@@ -51,6 +51,8 @@ def import_queue(location):
     module, attr = location.rsplit('.', 1)
     module = import_module(module)
     queue = getattr(module, attr)
+    if hasattr(queue, '__call__'):
+    	queue = queue()
     return queue
 
 
