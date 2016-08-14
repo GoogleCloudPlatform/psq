@@ -52,7 +52,7 @@ def import_queue(location):
     module = import_module(module)
     queue = getattr(module, attr)
     if hasattr(queue, '__call__'):
-    	queue = queue()
+        queue = queue()
     return queue
 
 
