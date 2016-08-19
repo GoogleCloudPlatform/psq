@@ -12,39 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from unittest import TestCase
-
 from mock import Mock
 
 from psq.context_local_pubsub_connection import ContextLocalPubsubConnection
 
 
-class TestContextLocalPubsubConnection(TestCase):
-    def test(self):
-        credentials = Mock()
-        credentials.authorize.side_effect = lambda x: x
-        credentials.create_scoped.return_value = credentials
-        prev_connection = Mock()
-        prev_connection._credentials = credentials
+def test():
+    credentials = Mock()
+    credentials.authorize.side_effect = lambda x: x
+    credentials.create_scoped.return_value = credentials
+    prev_connection = Mock()
+    prev_connection._credentials = credentials
 
-        connection = ContextLocalPubsubConnection(prev_connection)
+    connection = ContextLocalPubsubConnection(prev_connection)
 
-        assert connection._credentials == credentials
+    assert connection._credentials == credentials
 
-        # should create a new http client the first time.
-        http = connection.http
-        assert credentials.authorize.call_count == 1
+    # should create a new http client the first time.
+    http = connection.http
+    assert credentials.authorize.call_count == 1
 
-        # should return the same http client the second time.
-        new_http = connection.http
-        assert http == new_http
-        assert credentials.authorize.call_count == 1
+    # should return the same http client the second time.
+    new_http = connection.http
+    assert http == new_http
+    assert credentials.authorize.call_count == 1
 
-    def test_no_credentials(self):
-        prev_connection = Mock()
-        prev_connection._credentials = None
 
-        connection = ContextLocalPubsubConnection(prev_connection)
+def test_no_credentials():
+    prev_connection = Mock()
+    prev_connection._credentials = None
 
-        assert connection._credentials is None
-        assert connection.http
+    connection = ContextLocalPubsubConnection(prev_connection)
+
+    assert connection._credentials is None
+    assert connection.http

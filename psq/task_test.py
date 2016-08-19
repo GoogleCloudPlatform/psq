@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from unittest import TestCase
-
 from mock import Mock
-
 import psq
 from psq import utils
 from psq.queue import dummy_context
 from psq.task import FAILED, FINISHED, QUEUED, RETRYING, TimeoutError
+import pytest
 
 
 class MockQueue(psq.Queue):
@@ -34,161 +32,156 @@ def dummy_task_func():
     return 'Hello'
 
 
-class TestTask(TestCase):
+def test_execution():
+    q = MockQueue()
 
-    def testExecution(self):
-        q = MockQueue()
+    def f():
+        return '42'
 
-        def f():
-            return '42'
+    t = psq.Task('1', f, (), {})
 
-        t = psq.Task('1', f, (), {})
+    assert t.status == QUEUED
 
-        assert t.status == QUEUED
+    t.execute(q)
 
-        t.execute(q)
+    assert t.status == FINISHED
+    assert t.result == '42'
+    assert q.storage.put_task.call_count == 2
+
+    t.reset()
+
+    assert t.status == QUEUED
+    assert t.result is None
+
+    # Test with global queue context
+    with q.queue_context():
+        t.execute()
 
         assert t.status == FINISHED
         assert t.result == '42'
-        assert q.storage.put_task.call_count == 2
-
         t.reset()
 
-        assert t.status == QUEUED
-        assert t.result is None
+    def fails():
+        raise ValueError()
 
-        # Test with global queue context
-        with q.queue_context():
-            t.execute()
+    t.f = fails
 
-            assert t.status == FINISHED
-            assert t.result == '42'
-            t.reset()
+    t.execute(q)
 
-        def fails():
-            raise ValueError()
+    assert t.status == FAILED
+    assert isinstance(t.result, ValueError)
 
-        t.f = fails
+    t.reset()
 
-        t.execute(q)
+    def retries():
+        raise psq.Retry()
 
-        assert t.status == FAILED
-        assert isinstance(t.result, ValueError)
+    t.f = retries
 
-        t.reset()
+    t.execute(q)
 
-        def retries():
-            raise psq.Retry()
-
-        t.f = retries
-
-        t.execute(q)
-
-        assert t.status == RETRYING
-        assert t.retries == 1
-        assert q.enqueue_task.called
-
-    def testContext(self):
-        q = MockQueue()
-        t = psq.Task('1', sum, (), {})
-
-        assert not psq.current_task
-
-        with psq.task_context(t):
-            assert psq.current_task
-            assert psq.current_task.id == t.id
-
-        assert not psq.current_queue
-        assert not psq.current_task
-
-        def f():
-            assert psq.current_task
-            return True
-
-        t.f = f
-
-        t.execute(q)
-        assert t.result is True
-
-    def testSummary(self):
-        t = psq.Task('1', sum, ('2'), {'3': '4'})
-        assert t.summary() == '1: sum(2, {\'3\': \'4\'}) -> None (queued)'
-        assert t.summary() in str(t)
-
-    def test_string_function(self):
-        t = psq.Task(
-            '1', 'psq.task_test.dummy_task_func', (), {})
-
-        unpickled = utils.unpickle(utils.dumps(t))
-
-        assert unpickled.f == dummy_task_func
-
-        q = MockQueue()
-        with q.queue_context():
-            unpickled.execute()
-            assert unpickled.result == 'Hello'
-
-        # Bad functions/modules
-        t = psq.Task(
-            '1', 'psq.task_test.nonexistant_function', (), {})
-
-        self.assertRaises(
-            utils.UnpickleError,
-            utils.unpickle,
-            utils.dumps(t))
-
-        t = psq.Task(
-            '1', 'psq.nonexistant_module.nonexistant_function', (), {})
-
-        self.assertRaises(
-            utils.UnpickleError,
-            utils.unpickle,
-            utils.dumps(t))
+    assert t.status == RETRYING
+    assert t.retries == 1
+    assert q.enqueue_task.called
 
 
-class TestTaskResult(TestCase):
+def test_context():
+    q = MockQueue()
+    t = psq.Task('1', sum, (), {})
 
-    def testResult(self):
-        t = psq.Task('1', sum, (), {})
-        q = MockQueue()
-        q.storage.get_task.return_value = None
+    assert not psq.current_task
 
-        with q.queue_context():
-            r = psq.TaskResult('1')
+    with psq.task_context(t):
+        assert psq.current_task
+        assert psq.current_task.id == t.id
 
-        assert r.storage == q.storage
+    assert not psq.current_queue
+    assert not psq.current_task
 
-        with self.assertRaises(TimeoutError):
-            r.result(timeout=0.1)
+    def f():
+        assert psq.current_task
+        return True
 
+    t.f = f
+
+    t.execute(q)
+    assert t.result is True
+
+
+def test_summary():
+    t = psq.Task('1', sum, ('2'), {'3': '4'})
+    assert t.summary() == '1: sum(2, {\'3\': \'4\'}) -> None (queued)'
+    assert t.summary() in str(t)
+
+
+def test_string_function():
+    t = psq.Task(
+        '1', 'psq.task_test.dummy_task_func', (), {})
+
+    unpickled = utils.unpickle(utils.dumps(t))
+
+    assert unpickled.f == dummy_task_func
+
+    q = MockQueue()
+    with q.queue_context():
+        unpickled.execute()
+        assert unpickled.result == 'Hello'
+
+    # Bad functions/modules
+    t = psq.Task(
+        '1', 'psq.task_test.nonexistant_function', (), {})
+
+    with pytest.raises(utils.UnpickleError):
+        utils.unpickle(utils.dumps(t))
+
+    t = psq.Task(
+        '1', 'psq.nonexistant_module.nonexistant_function', (), {})
+
+    with pytest.raises(utils.UnpickleError):
+        utils.unpickle(utils.dumps(t))
+
+
+def test_result():
+    t = psq.Task('1', sum, (), {})
+    q = MockQueue()
+    q.storage.get_task.return_value = None
+
+    with q.queue_context():
+        r = psq.TaskResult('1')
+
+    assert r.storage == q.storage
+
+    with pytest.raises(TimeoutError):
+        r.result(timeout=0.1)
+
+    q.storage.get_task.return_value = t
+
+    with pytest.raises(TimeoutError):
+        r.result(timeout=0.1)
+
+    t.start()
+
+    with pytest.raises(TimeoutError):
+        r.result(timeout=0.1)
+
+    t.finish(42)
+
+    assert r.result(timeout=0.1) == 42
+
+    t.fail(ValueError())
+
+    with pytest.raises(ValueError):
+        r.result(timeout=0.1)
+
+    # Test without timeout. This is tricky.
+
+    t.reset()
+
+    def side_effect(_):
+        t.finish(43)
         q.storage.get_task.return_value = t
+        q.storage.get_task.side_effect = None
 
-        with self.assertRaises(TimeoutError):
-            r.result(timeout=0.1)
+    q.storage.get_task.side_effect = side_effect
 
-        t.start()
-
-        with self.assertRaises(TimeoutError):
-            r.result(timeout=0.1)
-
-        t.finish(42)
-
-        assert r.result(timeout=0.1) == 42
-
-        t.fail(ValueError())
-
-        with self.assertRaises(ValueError):
-            r.result(timeout=0.1)
-
-        # Test without timeout. This is tricky.
-
-        t.reset()
-
-        def side_effect(_):
-            t.finish(43)
-            q.storage.get_task.return_value = t
-            q.storage.get_task.side_effect = None
-
-        q.storage.get_task.side_effect = side_effect
-
-        assert r.result() == 43
+    assert r.result() == 43

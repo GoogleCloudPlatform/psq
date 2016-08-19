@@ -21,9 +21,11 @@ from __future__ import absolute_import
 
 import logging
 
+from .broadcast_queue import BroadcastQueue
+from .datastore_storage import DatastoreStorage
 from .globals import current_queue, current_task, queue_context, task_context
-from .queue import BroadcastQueue, Queue
-from .storage import DatastoreStorage, Storage
+from .queue import Queue
+from .storage import Storage
 from .task import Retry, Task, TaskResult
 from .worker import MultiprocessWorker, Worker
 

@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import multiprocessing
-from unittest import TestCase
 
 from mock import Mock, patch
 from psq.queue import dummy_context, Queue
 from psq.task import Task
 from psq.worker import MultiprocessWorker, Worker
+import pytest
 
 
 class MockQueue(Queue):
@@ -49,42 +49,42 @@ class MockQueue(Queue):
         return tasks
 
 
-class TestWorker(TestCase):
-    def test_listen(self):
-        q = MockQueue()
-        worker = Worker(queue=q)
+def test_worker_listen():
+    q = MockQueue()
+    worker = Worker(queue=q)
 
-        t = Mock()
-        q.enqueue_task(t)
+    t = Mock()
+    q.enqueue_task(t)
 
-        worker.listen()
+    worker.listen()
 
-        assert t.execute.called
+    assert t.execute.called
 
-    @patch('retrying.time.sleep')
-    def test_safe_dequeue(self, sleep_mock):
-        q = Mock()
-        t = Mock()
-        worker = Worker(queue=q)
 
-        # Test two errors and a success.
-        q.dequeue.side_effect = [ValueError(''), ValueError(''), [t]]
+@patch('retrying.time.sleep')
+def test_worker_safe_dequeue(sleep_mock):
+    q = Mock()
+    t = Mock()
+    worker = Worker(queue=q)
 
-        tasks = worker._safe_dequeue()
+    # Test two errors and a success.
+    q.dequeue.side_effect = [ValueError(''), ValueError(''), [t]]
 
-        assert tasks == [t]
-        assert sleep_mock.call_count == 2
+    tasks = worker._safe_dequeue()
 
-        # Test 5 sequential errors, should raise.
-        sleep_mock.reset_mock()
-        q.dequeue.side_effect = [
-            ValueError(''), ValueError(''), ValueError(''), ValueError(''),
-            RuntimeError('')]
+    assert tasks == [t]
+    assert sleep_mock.call_count == 2
 
-        with self.assertRaises(RuntimeError):
-            worker._safe_dequeue()
+    # Test 5 sequential errors, should raise.
+    sleep_mock.reset_mock()
+    q.dequeue.side_effect = [
+        ValueError(''), ValueError(''), ValueError(''), ValueError(''),
+        RuntimeError('')]
 
-        assert sleep_mock.call_count == 4
+    with pytest.raises(RuntimeError):
+        worker._safe_dequeue()
+
+    assert sleep_mock.call_count == 4
 
 
 # This is necessary to track the call across process boundaries.
@@ -95,21 +95,20 @@ def mark_done():
     mark_done_called.value = 1
 
 
-class TestMultiprocessWorker(TestCase):
-    def test(self):
-        mark_done_called.value = 0
+def test_multiprocess_worker():
+    mark_done_called.value = 0
 
-        q = MockQueue()
+    q = MockQueue()
 
-        worker = MultiprocessWorker(queue=q)
-        assert worker.tasks_per_poll
-        worker.pool.close()
+    worker = MultiprocessWorker(queue=q)
+    assert worker.tasks_per_poll
+    worker.pool.close()
 
-        worker = MultiprocessWorker(queue=q, num_workers=1)
+    worker = MultiprocessWorker(queue=q, num_workers=1)
 
-        t = Task('1', mark_done, (), {})
-        q.enqueue_task(t)
+    t = Task('1', mark_done, (), {})
+    q.enqueue_task(t)
 
-        worker.listen()
+    worker.listen()
 
-        assert mark_done_called.value == 1
+    assert mark_done_called.value == 1
