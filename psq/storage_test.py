@@ -15,7 +15,7 @@
 from psq.storage import Storage
 
 
-def test_ops():
+def test_basic_operations():
     storage = Storage()
     storage.put_task(None)
     assert storage.get_task(1) is None

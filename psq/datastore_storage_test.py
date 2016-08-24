@@ -18,12 +18,13 @@ from psq.datastore_storage import DatastoreStorage
 from psq.task import Task
 
 
-def test_ops():
+def test_basic_operations():
     datastore_mock = Mock()
     storage = DatastoreStorage(datastore_mock)
 
     t = Task('1', sum, (), {})
 
+    # The tasks is in the `queued` state. Datastore storage by default
     # shouldn't store queued, retrying, or started tasks.
     storage.put_task(t)
     assert not datastore_mock.put.called
