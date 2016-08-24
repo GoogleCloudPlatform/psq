@@ -137,38 +137,6 @@ class Queue(object):
         return queue_context(self)
 
 
-class BroadcastQueue(Queue):
-    """Sends each task to all active workers.
-
-    This is in contrast with the standard queue which distributes a task to a
-    single worker.
-    """
-    def __init__(self, pubsub, name='broadcast', **kwargs):
-        super(BroadcastQueue, self).__init__(
-            pubsub, name=name, storage=Storage(), **kwargs)
-
-    def _get_or_create_subscription(self):
-        """In a broadcast queue, workers have a unique subscription ensuring
-        that every worker recieves a copy of every task."""
-        subscription_name = '{}-{}-{}-worker'.format(
-            PUBSUB_OBJECT_PREFIX, self.name, uuid4().hex)
-
-        subscription = pubsub.Subscription(subscription_name, topic=self.topic)
-
-        if not subscription.exists():
-            logger.info("Creating worker subscription {}".format(
-                subscription_name))
-            subscription.create()
-
-        return subscription
-
-    def cleanup(self):
-        """Deletes this worker's subscription."""
-        if self.subscription:
-            logger.info("Deleting worker subscription...")
-            self.subscription.delete()
-
-
 @contextmanager
 def dummy_context():
     yield
