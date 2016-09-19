@@ -16,7 +16,7 @@ from __future__ import absolute_import
 
 from datetime import datetime
 
-from gcloud import datastore
+from google.cloud import datastore
 from six.moves import range
 
 from .storage import Storage

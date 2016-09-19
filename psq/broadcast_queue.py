@@ -15,7 +15,7 @@
 import logging
 from uuid import uuid4
 
-from gcloud import pubsub
+from google.cloud import pubsub
 
 from . import queue
 from . import storage

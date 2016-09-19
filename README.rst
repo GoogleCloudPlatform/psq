@@ -52,7 +52,7 @@ Then, create a pubsub client and a queue:
 
 .. code:: python
 
-    from gcloud import pubsub
+    from google.cloud import pubsub
     import psq
 
 
@@ -74,7 +74,7 @@ In order to get task results, you have to configure storage:
 
 .. code:: python
 
-    from gcloud import pubsub
+    from google.cloud import pubsub
     import psq
 
 

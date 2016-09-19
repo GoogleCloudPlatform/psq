@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from gcloud.pubsub.connection import Connection
+from google.cloud.pubsub.connection import Connection
 import httplib2
 from werkzeug.local import Local
 

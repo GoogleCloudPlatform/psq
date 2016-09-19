@@ -18,8 +18,8 @@ from contextlib import contextmanager
 import logging
 from uuid import uuid4
 
-from gcloud import pubsub
-import gcloud.exceptions
+from google.cloud import pubsub
+import google.cloud.exceptions
 
 from .context_local_pubsub_connection import ContextLocalPubsubConnection
 from .globals import queue_context
@@ -54,7 +54,7 @@ class Queue(object):
             logger.info("Creating topic {}".format(topic_name))
             try:
                 topic.create()
-            except gcloud.exceptions.Conflict:
+            except google.cloud.exceptions.Conflict:
                 # Another process created the topic before us, ignore.
                 pass
 
@@ -74,7 +74,7 @@ class Queue(object):
                 subscription_name))
             try:
                 subscription.create()
-            except gcloud.exceptions.Conflict:
+            except google.cloud.exceptions.Conflict:
                 # Another worker created the subscription before us, ignore.
                 pass
 
