@@ -21,11 +21,10 @@ from uuid import uuid4
 from google.cloud import pubsub
 import google.cloud.exceptions
 
-from .context_local_pubsub_connection import ContextLocalPubsubConnection
 from .globals import queue_context
 from .storage import Storage
 from .task import Task, TaskResult
-from .utils import dumps, unpickle, UnpickleError
+from .utils import dumps, unpickle, UnpickleError, _check_for_thread_safety
 
 
 logger = logging.getLogger(__name__)
@@ -36,9 +35,8 @@ PUBSUB_OBJECT_PREFIX = 'psq'
 class Queue(object):
     def __init__(self, pubsub, name='default', storage=None,
                  extra_context=None):
+        _check_for_thread_safety(pubsub)
         self.pubsub = pubsub
-        self.pubsub.connection = ContextLocalPubsubConnection(
-            self.pubsub.connection)
         self.name = name
         self.topic = self._get_or_create_topic()
         self.storage = storage or Storage()
