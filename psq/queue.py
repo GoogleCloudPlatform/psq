@@ -18,14 +18,13 @@ from contextlib import contextmanager
 import logging
 from uuid import uuid4
 
-from gcloud import pubsub
-import gcloud.exceptions
+from google.cloud import pubsub
+import google.cloud.exceptions
 
-from .context_local_pubsub_connection import ContextLocalPubsubConnection
 from .globals import queue_context
 from .storage import Storage
 from .task import Task, TaskResult
-from .utils import dumps, unpickle, UnpickleError
+from .utils import _check_for_thread_safety, dumps, unpickle, UnpickleError
 
 
 logger = logging.getLogger(__name__)
@@ -36,9 +35,8 @@ PUBSUB_OBJECT_PREFIX = 'psq'
 class Queue(object):
     def __init__(self, pubsub, name='default', storage=None,
                  extra_context=None):
+        _check_for_thread_safety(pubsub)
         self.pubsub = pubsub
-        self.pubsub.connection = ContextLocalPubsubConnection(
-            self.pubsub.connection)
         self.name = name
         self.topic = self._get_or_create_topic()
         self.storage = storage or Storage()
@@ -54,7 +52,7 @@ class Queue(object):
             logger.info("Creating topic {}".format(topic_name))
             try:
                 topic.create()
-            except gcloud.exceptions.Conflict:
+            except google.cloud.exceptions.Conflict:
                 # Another process created the topic before us, ignore.
                 pass
 
@@ -74,7 +72,7 @@ class Queue(object):
                 subscription_name))
             try:
                 subscription.create()
-            except gcloud.exceptions.Conflict:
+            except google.cloud.exceptions.Conflict:
                 # Another worker created the subscription before us, ignore.
                 pass
 

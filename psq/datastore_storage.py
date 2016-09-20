@@ -16,12 +16,12 @@ from __future__ import absolute_import
 
 from datetime import datetime
 
-from gcloud import datastore
+from google.cloud import datastore
 from six.moves import range
 
 from .storage import Storage
 from .task import FAILED, FINISHED
-from .utils import dumps, loads
+from .utils import _check_for_thread_safety, dumps, loads
 
 
 DATASTORE_KIND_PREFIX = 'psq'
@@ -37,6 +37,7 @@ class DatastoreStorage(Storage):
 
     def __init__(self, datastore):
         super(DatastoreStorage, self).__init__()
+        _check_for_thread_safety(datastore)
         self.datastore = datastore
 
     def _get_task_key(self, task_id):

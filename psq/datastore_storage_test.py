@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from gcloud import datastore
+from google.cloud import datastore
 from mock import Mock
 from psq.datastore_storage import DatastoreStorage
 from psq.task import Task

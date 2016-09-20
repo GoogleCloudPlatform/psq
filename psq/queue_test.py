@@ -15,7 +15,7 @@
 from contextlib import contextmanager
 from pickle import dumps
 
-import gcloud.exceptions
+import google.cloud.exceptions
 from mock import Mock, patch
 
 from psq import current_queue
@@ -57,7 +57,7 @@ def test_get_or_create_subscription():
     sub.exists.return_value = False
 
     # Test the case where it needs to create the subcription.
-    with patch('gcloud.pubsub.Subscription') as SubscriptionMock:
+    with patch('google.cloud.pubsub.Subscription') as SubscriptionMock:
         SubscriptionMock.return_value = sub
         rsub = q._get_or_create_subscription()
 
@@ -67,7 +67,7 @@ def test_get_or_create_subscription():
         assert sub.create.called
 
     # Test case where subscription exists and it should re-use it.
-    with patch('gcloud.pubsub.Subscription') as SubscriptionMock:
+    with patch('google.cloud.pubsub.Subscription') as SubscriptionMock:
         sub.reset_mock()
         SubscriptionMock.return_value = sub
         sub.exists.return_value = True
@@ -79,11 +79,11 @@ def test_get_or_create_subscription():
     # Test case where subscription gets created after we check that it
     # doesn't exist.
 
-    with patch('gcloud.pubsub.Subscription') as SubscriptionMock:
+    with patch('google.cloud.pubsub.Subscription') as SubscriptionMock:
         sub.reset_mock()
         SubscriptionMock.return_value = sub
         sub.exists.return_value = False
-        sub.create.side_effect = gcloud.exceptions.Conflict('')
+        sub.create.side_effect = google.cloud.exceptions.Conflict('')
         rsub = q._get_or_create_subscription()
 
         assert sub.create.called
@@ -95,7 +95,7 @@ def test_creation_existing_topic():
     pubsub = Mock()
     topic = Mock()
     topic.exists.return_value = False
-    topic.create.side_effect = gcloud.exceptions.Conflict('')
+    topic.create.side_effect = google.cloud.exceptions.Conflict('')
     pubsub.topic.return_value = topic
 
     q = Queue(pubsub)

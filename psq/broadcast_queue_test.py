@@ -41,7 +41,7 @@ def test_create_subscription():
     sub.exists.return_value = False
 
     # Test to make sure it creates a unique (non-shared) subscription.
-    with patch('gcloud.pubsub.Subscription') as SubscriptionMock:
+    with patch('google.cloud.pubsub.Subscription') as SubscriptionMock:
         SubscriptionMock.return_value = sub
         rsub = q._get_or_create_subscription()
 
@@ -52,7 +52,7 @@ def test_create_subscription():
         assert sub.create.called
 
     # Test reusing existing
-    with patch('gcloud.pubsub.Subscription') as SubscriptionMock:
+    with patch('google.cloud.pubsub.Subscription') as SubscriptionMock:
         sub.reset_mock()
         SubscriptionMock.return_value = sub
         sub.exists.return_value = True
