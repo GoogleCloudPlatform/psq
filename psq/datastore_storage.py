@@ -21,7 +21,7 @@ from six.moves import range
 
 from .storage import Storage
 from .task import FAILED, FINISHED
-from .utils import dumps, loads, _check_for_thread_safety
+from .utils import _check_for_thread_safety, dumps, loads
 
 
 DATASTORE_KIND_PREFIX = 'psq'

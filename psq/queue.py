@@ -24,7 +24,7 @@ import google.cloud.exceptions
 from .globals import queue_context
 from .storage import Storage
 from .task import Task, TaskResult
-from .utils import dumps, unpickle, UnpickleError, _check_for_thread_safety
+from .utils import _check_for_thread_safety, dumps, unpickle, UnpickleError
 
 
 logger = logging.getLogger(__name__)
