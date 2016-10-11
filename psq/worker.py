@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 class Worker(object):
-    def __init__(self, queue='default'):
+    def __init__(self, queue):
         self.queue = queue
         self.storage = self.queue.storage
         self.tasks_per_poll = 1
