@@ -36,12 +36,13 @@ class Queue(object):
     def __init__(self, pubsub, name='default', storage=None,
                  extra_context=None, async=True):
         self.async = async
+        self.name = name
+
         if async:
             _check_for_thread_safety(pubsub)
             self.pubsub = pubsub
             self.topic = self._get_or_create_topic()
 
-        self.name = name
         self.storage = storage or Storage()
         self.subscription = None
         self.extra_context = extra_context if extra_context else dummy_context
