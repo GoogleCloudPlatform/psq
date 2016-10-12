@@ -34,11 +34,14 @@ PUBSUB_OBJECT_PREFIX = 'psq'
 
 class Queue(object):
     def __init__(self, pubsub, name='default', storage=None,
-                 extra_context=None):
-        _check_for_thread_safety(pubsub)
-        self.pubsub = pubsub
+                 extra_context=None, async=True):
+        self.async = async
+        if async:
+            _check_for_thread_safety(pubsub)
+            self.pubsub = pubsub
+            self.topic = self._get_or_create_topic()
+
         self.name = name
-        self.topic = self._get_or_create_topic()
         self.storage = storage or Storage()
         self.subscription = None
         self.extra_context = extra_context if extra_context else dummy_context
@@ -91,7 +94,12 @@ class Queue(object):
         Note that this does not store the task.
         """
         data = dumps(task)
-        self.topic.publish(data)
+
+        if self.async:
+            self.topic.publish(data)
+        else:
+            task.execute(queue=self)
+
         logger.info("Task {} queued.".format(task.id))
         return TaskResult(task.id, self)
 
