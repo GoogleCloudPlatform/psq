@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
 
 from contextlib import contextmanager
 from pickle import dumps
@@ -23,6 +22,8 @@ from mock import Mock, patch
 from psq import current_queue
 from psq.queue import Queue
 from psq.task import Task
+
+import pytest
 
 
 class MockMessage(object):

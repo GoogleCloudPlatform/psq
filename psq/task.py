@@ -14,8 +14,8 @@
 
 from __future__ import absolute_import
 
-import logging
 import importlib
+import logging
 import time
 
 from six import string_types
