@@ -41,7 +41,7 @@ class TestStorage(object):
     def put_task(self, task):
         self._data[task.id] = task
 
-    def delete_task(self, task_id):
+    def delete_task(self, task_id):  # pragma: no cover
         del self._data[task_id]
 
 
