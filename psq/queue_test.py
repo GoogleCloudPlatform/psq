@@ -22,7 +22,7 @@ from mock import Mock, patch
 
 from psq import current_queue
 from psq.queue import Queue
-from psq.task import Task, FINISHED
+from psq.task import Task
 
 
 class MockMessage(object):
@@ -38,7 +38,6 @@ class TestStorage(object):
         return self._data.get(task_id)
 
     def put_task(self, task):
-        print "put_task", task
         self._data[task.id] = task
 
     def delete_task(self, task_id):
