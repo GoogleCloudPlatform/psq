@@ -24,7 +24,7 @@ import google.cloud.exceptions
 from .globals import queue_context
 from .storage import Storage
 from .task import Task, TaskResult
-from .utils import _check_for_thread_safety, dumps, unpickle, UnpickleError
+from .utils import _check_for_thread_safety, dumps, unpickle, UnpickleError, measure_time
 
 
 logger = logging.getLogger(__name__)
@@ -35,10 +35,10 @@ PUBSUB_OBJECT_PREFIX = 'psq'
 class Queue(object):
     def __init__(self, pubsub, name='default', storage=None,
                  extra_context=None, async=True):
-        self.async = async
+        self._async = async
         self.name = name
 
-        if async:
+        if self._async:
             _check_for_thread_safety(pubsub)
             self.pubsub = pubsub
             self.topic = self._get_or_create_topic()
@@ -96,12 +96,15 @@ class Queue(object):
         """
         data = dumps(task)
 
-        if self.async:
+        if self._async:
             self.topic.publish(data)
+            logger.info("Task {} queued.".format(task.id))
         else:
-            task.execute(queue=self)
+            logger.info("Executing task {} synchronously.".format(task.id))
+            with measure_time() as summary, self.queue_context():
+                task.execute(queue=self)
+                summary(task.summary())
 
-        logger.info("Task {} queued.".format(task.id))
         return TaskResult(task.id, self)
 
     def dequeue(self, max=1, block=False):
@@ -122,9 +125,8 @@ class Queue(object):
             try:
                 task = unpickle(x[1].data)
                 tasks.append(task)
-            except UnpickleError as e:
-                logger.exception(e)
-                logger.error("Failed to unpickle a task.")
+            except UnpickleError:
+                logger.exception("Failed to unpickle task {}.".format(x[0]))
 
         self.subscription.acknowledge(ack_ids)
 

@@ -94,8 +94,7 @@ class Task(object):
                 self.retry()
                 queue.enqueue_task(self)
             except Exception as e:
-                logger.exception(e)
-                logger.error("Task {} failed.".format(self.id))
+                logger.exception("Task {} failed.".format(self.id))
                 self.fail(e)
             finally:
                 # Record success, failure, or retry in the storage.
