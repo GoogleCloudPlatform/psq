@@ -228,7 +228,7 @@ to provide a pubsub client in this case, just pass None to the queue.
 .. code:: python
 
     q = psq.Queue(None, async=False)
-    r = q.enqueue(adder, "1, 2") # Will be run immediately
+    r = q.enqueue(adder, 1, 2) # Will be run immediately
 
 
 
