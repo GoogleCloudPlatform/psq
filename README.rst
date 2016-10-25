@@ -217,6 +217,21 @@ useful for things such as database connections, etc.:
     def flasky_task():
         backend = current_app.config['BACKEND']
 
+Bypassing workers for testing
+-----------------------------
+
+During unit tests you most certainly don't want to spin up workers, but instead
+execute the enqueued functions immediately and synchronously. To do this, pass
+`async=False` to the Queue's constructor (default is True). Also, you don't have
+to provide a pubsub client in this case, just pass None to the queue.
+
+.. code:: python
+
+    q = psq.Queue(None, async=False)
+    r = q.enqueue(adder, 1, 2) # Will be run immediately
+
+
+
 Ideas for improvements
 ----------------------
 

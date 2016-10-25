@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from contextlib import contextmanager
 from pickle import dumps
 
@@ -22,10 +23,23 @@ from psq import current_queue
 from psq.queue import Queue
 from psq.task import Task
 
+import pytest
+
 
 class MockMessage(object):
     def __init__(self, data):
         self.data = data
+
+
+class TestStorage(object):
+    def __init__(self):
+        self._data = {}
+
+    def get_task(self, task_id):
+        return self._data.get(task_id)
+
+    def put_task(self, task):
+        self._data[task.id] = task
 
 
 def test_creation():
@@ -195,3 +209,16 @@ def test_cleanup():
     q = Queue(pubsub)
 
     q.cleanup()
+
+
+def test_synchronous_success():
+    q = Queue(pubsub=None, storage=TestStorage(), async=False)
+    r = q.enqueue(sum, [1, 2])
+    assert r.result() == 3
+
+
+def test_synchronous_fail():
+    q = Queue(pubsub=None, storage=TestStorage(), async=False)
+    r = q.enqueue(sum, "2")
+    with pytest.raises(TypeError):
+        r.result()

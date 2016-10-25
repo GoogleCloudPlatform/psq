@@ -15,11 +15,15 @@
 from __future__ import absolute_import
 
 import importlib
+import logging
 import time
 
 from six import string_types
 
 from .globals import current_queue, task_context
+
+
+logger = logging.getLogger(__name__)
 
 
 class Retry(Exception):
@@ -90,6 +94,7 @@ class Task(object):
                 self.retry()
                 queue.enqueue_task(self)
             except Exception as e:
+                logger.exception('Task {} failed.'.format(self.id))
                 self.fail(e)
             finally:
                 # Record success, failure, or retry in the storage.
