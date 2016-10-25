@@ -99,9 +99,9 @@ class Queue(object):
 
         if self._async:
             self.topic.publish(data)
-            logger.info("Task {} queued.".format(task.id))
+            logger.info('Task {} queued.'.format(task.id))
         else:
-            logger.info("Executing task {} synchronously.".format(task.id))
+            logger.info('Executing task {} synchronously.'.format(task.id))
             with measure_time() as summary, self.queue_context():
                 task.execute(queue=self)
                 summary(task.summary())
@@ -127,7 +127,7 @@ class Queue(object):
                 task = unpickle(x[1].data)
                 tasks.append(task)
             except UnpickleError:
-                logger.exception("Failed to unpickle task {}.".format(x[0]))
+                logger.exception('Failed to unpickle task {}.'.format(x[0]))
 
         self.subscription.acknowledge(ack_ids)
 
