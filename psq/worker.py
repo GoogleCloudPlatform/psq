@@ -28,11 +28,12 @@ logger = logging.getLogger(__name__)
 
 
 class Worker(object):
-    def __init__(self, queue):
+    def __init__(self, queue, empty_delay=0):
         self.queue = queue
         self.storage = self.queue.storage
         self.tasks_per_poll = 1
         self.max_sequential_errors = 5
+        self.empty_delay = empty_delay
 
     def _safe_dequeue(self):
         """Dequeues tasks while dealing with transient errors."""
@@ -42,7 +43,8 @@ class Worker(object):
             wait_exponential_multiplier=1000, wait_exponential_max=10000,
             retry_on_exception=lambda e: not isinstance(e, KeyboardInterrupt))
         def inner():
-            return self.queue.dequeue(max=self.tasks_per_poll, block=True)
+            block = self.empty_delay == 0
+            return self.queue.dequeue(max=self.tasks_per_poll, block=block)
         return inner()
 
     def listen(self):
@@ -53,6 +55,8 @@ class Worker(object):
                 tasks = self._safe_dequeue()
 
                 if not tasks:
+                    if self.empty_delay:
+                        time.sleep(self.empty_delay)
                     continue
 
                 for task in tasks:

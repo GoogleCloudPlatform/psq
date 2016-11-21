@@ -73,7 +73,10 @@ def import_queue(location):
     'queue',
     nargs=1,
     required=True)
-def main(path, single_threaded, workers, pid, queue):
+@click.option(
+    '--empty-delay', default=0, type=click.FLOAT,
+    help='Sleep time if queue is empty upon pulling.')
+def main(path, single_threaded, workers, pid, queue, empty_delay):
     """
     Standalone PSQ worker.
 
@@ -107,11 +110,12 @@ def main(path, single_threaded, workers, pid, queue):
     import psq
 
     if single_threaded:
-        worker = psq.Worker(queue=queue)
+        worker = psq.Worker(queue=queue, empty_delay=empty_delay)
     else:
         worker = psq.MultiprocessWorker(
             queue=queue,
-            num_workers=workers)
+            num_workers=workers,
+            empty_delay=empty_delay)
 
     worker.listen()
 
