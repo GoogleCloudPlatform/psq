@@ -16,9 +16,10 @@ from __future__ import absolute_import
 
 from datetime import datetime
 
-from retrying import retry
+
 from google.cloud import datastore
 from six.moves import range
+from retrying import retry
 
 from .storage import Storage
 from .task import FAILED, FINISHED
