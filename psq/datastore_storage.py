@@ -78,7 +78,7 @@ class DatastoreStorage(Storage):
         entity['timestamp'] = datetime.utcnow()
 
         self.datastore.put(entity)
- 
+
     @retry(
         stop_max_attempt_number=5,
         # Wait 2^n * 1 seconds between retries, up to 10 seconds.
