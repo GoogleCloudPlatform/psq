@@ -18,8 +18,8 @@ from datetime import datetime
 
 
 from google.cloud import datastore
-from six.moves import range
 from retrying import retry
+from six.moves import range
 
 from .storage import Storage
 from .task import FAILED, FINISHED
