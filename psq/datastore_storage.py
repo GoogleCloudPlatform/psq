@@ -16,8 +16,8 @@ from __future__ import absolute_import
 
 from datetime import datetime
 
-from retrying import retry
 from google.cloud import datastore
+from retrying import retry
 from six.moves import range
 
 from .storage import Storage
@@ -33,6 +33,7 @@ _RETRY = retry(
     wait_exponential_max=10000,
     retry_on_exception=lambda e: not isinstance(e, KeyboardInterrupt)
 )
+
 
 class DatastoreStorage(Storage):
     """
@@ -72,7 +73,7 @@ class DatastoreStorage(Storage):
         entity['timestamp'] = datetime.utcnow()
 
         self.datastore.put(entity)
- 
+
     @_RETRY
     def delete_task(self, task_id):
         self.datastore.delete(self._get_task_key(task_id))
