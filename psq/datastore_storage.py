@@ -27,11 +27,12 @@ from .utils import _check_for_thread_safety, dumps, loads
 
 DATASTORE_KIND_PREFIX = 'psq'
 
-_RETRY = retry(stop_max_attempt_number=5,
-               wait_exponential_multiplier=1000,
-               wait_exponential_max=10000,
-               retry_on_exception=lambda e: not isinstance(e, KeyboardInterrupt))
-
+_RETRY = retry(
+    stop_max_attempt_number=5,
+    wait_exponential_multiplier=1000,
+    wait_exponential_max=10000,
+    retry_on_exception=lambda e: not isinstance(e, KeyboardInterrupt)
+)
 
 class DatastoreStorage(Storage):
     """
