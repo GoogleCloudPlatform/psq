@@ -35,6 +35,7 @@ _RETRY = retry(
     retry_on_exception=lambda e: isinstance(e, exceptions.ServerError)
 )
 
+
 class DatastoreStorage(Storage):
     """
     Stores tasks in Google Cloud Datastore. By default, this only stores when
