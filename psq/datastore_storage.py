@@ -16,7 +16,7 @@ from __future__ import absolute_import
 
 from datetime import datetime
 
-from google.cloud import datastore
+from google.cloud import datastore, exceptions
 from retrying import retry
 from six.moves import range
 
@@ -27,13 +27,13 @@ from .utils import _check_for_thread_safety, dumps, loads
 
 DATASTORE_KIND_PREFIX = 'psq'
 
+
 _RETRY = retry(
     stop_max_attempt_number=5,
     wait_exponential_multiplier=1000,
     wait_exponential_max=10000,
-    retry_on_exception=lambda e: not isinstance(e, KeyboardInterrupt)
+    retry_on_exception=lambda e: isinstance(e, exceptions.ServerError)
 )
-
 
 class DatastoreStorage(Storage):
     """
