@@ -20,6 +20,9 @@ import signal
 import time
 
 from retrying import retry
+from grpc import StatusCode
+from google.gax import errors
+from google.cloud import exceptions
 
 from .utils import measure_time
 
@@ -42,7 +45,12 @@ class Worker(object):
             wait_exponential_multiplier=1000, wait_exponential_max=10000,
             retry_on_exception=lambda e: not isinstance(e, KeyboardInterrupt))
         def inner():
-            return self.queue.dequeue(max=self.tasks_per_poll, block=True)
+            try:
+                return self.queue.dequeue(max=self.tasks_per_poll, block=True)
+            except errors.GaxError as e:
+                # Ignore timeouts and retry later
+                if not _is_timeout(e):
+                    raise
         return inner()
 
     def listen(self):
@@ -160,3 +168,10 @@ def _execute_task_in_worker(task):  # pragma: no cover
     with measure_time() as summary, _worker_queue.queue_context():
         task.execute(_worker_queue)
         summary('{} finished {}'.format(worker_name, task.summary()))
+
+
+def _is_timeout(err):
+    # Check whether a given GaxError is a timeout exception
+    exc = err.cause
+    return isinstance(exc, exceptions.GrpcRendezvous) and \
+        exc.code() == StatusCode.DEADLINE_EXCEEDED
