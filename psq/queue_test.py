@@ -42,6 +42,10 @@ class TestStorage(object):
         self._data[task.id] = task
 
 
+def dummy_queue_func():
+    return "Hello"
+
+
 def test_creation():
     # Test the case where queue needs to create the topic.
     pubsub = Mock()
@@ -222,3 +226,9 @@ def test_synchronous_fail():
     r = q.enqueue(sum, "2")
     with pytest.raises(TypeError):
         r.result()
+
+
+def test_string_function():
+    q = Queue(pubsub=None, storage=TestStorage(), async=False)
+    r = q.enqueue('psq.queue_test.dummy_queue_func')
+    assert r.result() == "Hello"
