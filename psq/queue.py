@@ -101,10 +101,13 @@ class Queue(object):
             self.topic.publish(data)
             logger.info('Task {} queued.'.format(task.id))
         else:
-            logger.info('Executing task {} synchronously.'.format(task.id))
+            unpickled_task = unpickle(data)
+            logger.info(
+                'Executing task {} synchronously.'.format(unpickled_task.id)
+            )
             with measure_time() as summary, self.queue_context():
-                task.execute(queue=self)
-                summary(task.summary())
+                unpickled_task.execute(queue=self)
+                summary(unpickled_task.summary())
 
         return TaskResult(task.id, self)
 
