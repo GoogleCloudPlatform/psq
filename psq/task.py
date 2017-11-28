@@ -20,6 +20,7 @@ import time
 
 from six import string_types
 
+from src.psq.utils import dumps
 from .globals import current_queue, task_context
 
 
@@ -42,6 +43,9 @@ FINISHED = 'finished'
 FAILED = 'failed'
 STARTED = 'started'
 
+# Number of times the task is not acknowledged to trigger a retry in
+ON_EXCEPTION_MAX_RETRIES_BEFORE_ACK_AND_GIVE_UP = 10
+
 
 class Task(object):
     def __init__(self, id, f, args, kwargs):
@@ -51,6 +55,11 @@ class Task(object):
         self.kwargs = kwargs
         self.retries = 0
         self.reset()
+
+        # these values will be set on dequeue if late acknowledgement is configured
+        self.subscription = None
+        """ :type: None|google.cloud.pubsub.Subscription """
+        self.ack_id = ''
 
     def reset(self):
         self.status = QUEUED
@@ -73,6 +82,39 @@ class Task(object):
         self.status = FAILED
         self.result = exception
 
+    def acknowledge(self):
+        """Acknowledge that this task was completed. Used for tasks that were dequeued with a late_ack-enabled queue.
+
+        :return: Returns `True` if late acknowledgement was required and has been done, `False` otherwise
+        :rtype: bool
+
+        """
+        if self.ack_id:
+            self.subscription.acknowledge([self.ack_id])
+            self.ack_id, self.subscription = '', None
+            return True
+        return False
+
+    def dump(self):
+        """ Get prepared task data for enqueuing.
+
+        :rtype: six.basestring
+        """
+
+        # make sure we don't dump complex data
+        tmp = self.ack_id, self.subscription
+        if self.ack_id:
+            self.ack_id, self.subscription = '', None
+
+        # fixme: (u)json support to improve compatibility with non-python clients (and speedup py2)
+        data = dumps(self)
+
+        # restore data
+        if self.ack_id:
+            self.ack_id, self.subscription = tmp[0], tmp[1]
+
+        return data
+
     def summary(self):
         return '{id}: {f.__name__}({args}, {kwargs}) -> {result} ({status})'\
             .format(**self.__dict__)
@@ -89,12 +131,18 @@ class Task(object):
             try:
                 result = self.call_func()
                 self.finish(result)
+                self.acknowledge()
             except Retry:
                 # Task raised Retry, so re-enqueue the task to run again later.
                 self.retry()
                 queue.enqueue_task(self)
+                self.acknowledge()
             except Exception as e:
-                logger.exception('Task {} failed.'.format(self.id))
+                if self.retries >= ON_EXCEPTION_MAX_RETRIES_BEFORE_ACK_AND_GIVE_UP:
+                    logger.exception('Task {} failed permanently.'.format(self.id))
+                    self.acknowledge()  # poor task failed forever
+                else:
+                    logger.exception('Task {} failed, task will be tried after acknowledge timeout.'.format(self.id))
                 self.fail(e)
             finally:
                 # Record success, failure, or retry in the storage.

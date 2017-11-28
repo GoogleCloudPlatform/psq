@@ -47,12 +47,12 @@ def setup_logging():  # pragma: no cover
     root_logger.addHandler(handler)
 
 
-def import_queue(location):
+def import_queue(location, **kwargs):
     module, attr = location.rsplit('.', 1)
     module = import_module(module)
     queue = getattr(module, attr)
     if hasattr(queue, '__call__'):
-        queue = queue()
+        queue = queue(**kwargs)
     return queue
 
 
@@ -69,11 +69,14 @@ def import_queue(location):
 @click.option(
     '--pid',
     help='Write the process ID to the specified file.')
+@click.option(
+    '--late_ack',
+    help='Enable late acknowledgement after this task has been executed.')
 @click.argument(
     'queue',
     nargs=1,
     required=True)
-def main(path, single_threaded, workers, pid, queue):
+def main(path, single_threaded, workers, pid, queue, late_ack):
     """
     Standalone PSQ worker.
 
@@ -102,7 +105,8 @@ def main(path, single_threaded, workers, pid, queue):
 
     sys.path.insert(0, path)
 
-    queue = import_queue(queue)
+    # init queue object
+    queue = import_queue(queue, late_ack=late_ack)
 
     import psq
 

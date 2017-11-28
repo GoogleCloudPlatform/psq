@@ -24,7 +24,7 @@ import google.cloud.exceptions
 from .globals import queue_context
 from .storage import Storage
 from .task import Task, TaskResult
-from .utils import (_check_for_thread_safety, dumps, measure_time, unpickle,
+from .utils import (_check_for_thread_safety, measure_time, unpickle,
                     UnpickleError)
 
 
@@ -35,7 +35,7 @@ PUBSUB_OBJECT_PREFIX = 'psq'
 
 class Queue(object):
     def __init__(self, pubsub, name='default', storage=None,
-                 extra_context=None, async=True):
+                 extra_context=None, async=True, late_ack=False):
         self._async = async
         self.name = name
 
@@ -47,6 +47,7 @@ class Queue(object):
         self.storage = storage or Storage()
         self.subscription = None
         self.extra_context = extra_context if extra_context else dummy_context
+        self.late_ack = late_ack
 
     def _get_or_create_topic(self):
         topic_name = '{}-{}'.format(PUBSUB_OBJECT_PREFIX, self.name)
@@ -95,7 +96,8 @@ class Queue(object):
 
         Note that this does not store the task.
         """
-        data = dumps(task)
+        # make sure
+        data = task.dump()
 
         if self._async:
             self.topic.publish(data)
@@ -128,11 +130,15 @@ class Queue(object):
         for x in messages:
             try:
                 task = unpickle(x[1].data)
+                if self.late_ack:
+                    task.ack_id = x[0]
+                    task.subscription = self.subscription
                 tasks.append(task)
             except UnpickleError:
                 logger.exception('Failed to unpickle task {}.'.format(x[0]))
 
-        self.subscription.acknowledge(ack_ids)
+        if not self.late_ack:
+            self.subscription.acknowledge(ack_ids)
 
         return tasks
 
