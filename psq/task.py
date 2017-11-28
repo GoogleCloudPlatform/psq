@@ -20,7 +20,7 @@ import time
 
 from six import string_types
 
-from src.psq.utils import dumps
+from .utils import dumps
 from .globals import current_queue, task_context
 
 
