@@ -20,8 +20,8 @@ import time
 
 from six import string_types
 
-from .utils import dumps
 from .globals import current_queue, task_context
+from .utils import dumps
 
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,8 @@ class Task(object):
         self.retries = 0
         self.reset()
 
-        # these values will be set on dequeue if late acknowledgement is configured
+        # these values will be set on dequeue if late acknowledgement
+        # is configured
         self.subscription = None
         """ :type: None|google.cloud.pubsub.Subscription """
         self.ack_id = ''
@@ -83,10 +84,12 @@ class Task(object):
         self.result = exception
 
     def acknowledge(self):
-        """Acknowledge that this task was completed. Used for tasks that were dequeued with a late_ack-enabled queue.
+        """Acknowledge that this task was completed. Used for tasks
+        that were dequeued with a late_ack-enabled queue.
 
-        :return: Returns `True` if late acknowledgement was required and has been done, `False` otherwise
-        :rtype: bool
+        Returns:
+            bool: Returns `True` if late acknowledgement was required
+            and has been done, `False` otherwise
 
         """
         if self.ack_id:
@@ -98,7 +101,8 @@ class Task(object):
     def dump(self):
         """ Get prepared task data for enqueuing.
 
-        :rtype: six.basestring
+        Returns:
+            six.string_types: serialized instance of Task
         """
 
         # make sure we don't dump complex data
@@ -106,7 +110,7 @@ class Task(object):
         if self.ack_id:
             self.ack_id, self.subscription = '', None
 
-        # fixme: (u)json support to improve compatibility with non-python clients (and speedup py2)
+        # fixme: (u)json support
         data = dumps(self)
 
         # restore data
