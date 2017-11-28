@@ -69,14 +69,11 @@ def import_queue(location, **kwargs):
 @click.option(
     '--pid',
     help='Write the process ID to the specified file.')
-@click.option(
-    '--late_ack',
-    help='Enable late acknowledgement after this task has been executed.')
 @click.argument(
     'queue',
     nargs=1,
     required=True)
-def main(path, single_threaded, workers, pid, queue, late_ack):
+def main(path, single_threaded, workers, pid, queue):
     """
     Standalone PSQ worker.
 
@@ -106,7 +103,7 @@ def main(path, single_threaded, workers, pid, queue, late_ack):
     sys.path.insert(0, path)
 
     # init queue object
-    queue = import_queue(queue, late_ack=late_ack)
+    queue = import_queue(queue)
 
     import psq
 
