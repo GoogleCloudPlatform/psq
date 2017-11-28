@@ -47,12 +47,12 @@ def setup_logging():  # pragma: no cover
     root_logger.addHandler(handler)
 
 
-def import_queue(location):
+def import_queue(location, **kwargs):
     module, attr = location.rsplit('.', 1)
     module = import_module(module)
     queue = getattr(module, attr)
     if hasattr(queue, '__call__'):
-        queue = queue()
+        queue = queue(**kwargs)
     return queue
 
 
@@ -102,6 +102,7 @@ def main(path, single_threaded, workers, pid, queue):
 
     sys.path.insert(0, path)
 
+    # init queue object
     queue = import_queue(queue)
 
     import psq
