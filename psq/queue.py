@@ -96,7 +96,6 @@ class Queue(object):
 
         Note that this does not store the task.
         """
-        # make sure
         data = task.dump()
 
         if self._async:
