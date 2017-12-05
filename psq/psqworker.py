@@ -61,19 +61,13 @@ def import_queue(location):
     '--path', '-p',
     help='Import path. By default, this is the current working directory.')
 @click.option(
-    '--single-threaded', is_flag=True,
-    help='Run everything in a single thread, do not start worker processes.')
-@click.option(
-    '--workers', '-n', type=click.IntRange(1, None),
-    help='Number of worker processes.')
-@click.option(
     '--pid',
     help='Write the process ID to the specified file.')
 @click.argument(
     'queue',
     nargs=1,
     required=True)
-def main(path, single_threaded, workers, pid, queue):
+def main(path, pid, queue):
     """
     Standalone PSQ worker.
 
@@ -106,12 +100,7 @@ def main(path, single_threaded, workers, pid, queue):
 
     import psq
 
-    if single_threaded:
-        worker = psq.Worker(queue=queue)
-    else:
-        worker = psq.MultiprocessWorker(
-            queue=queue,
-            num_workers=workers)
+    worker = psq.Worker(queue=queue)
 
     worker.listen()
 

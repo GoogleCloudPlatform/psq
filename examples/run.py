@@ -12,17 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from gcloud import datastore, pubsub
+import logging
+
+from google.cloud import datastore
+from google.cloud import pubsub_v1
 import psq
 import tasks
 
-PROJECT_ID = 'your-project-id'
+PROJECT_ID = 'your-project-id'  # CHANGE ME
 
-pubsub_client = pubsub.Client(project=PROJECT_ID)
+publisher_client = pubsub_v1.PublisherClient()
+subscriber_client = pubsub_v1.SubscriberClient()
 datastore_client = datastore.Client(project=PROJECT_ID)
 
 q = psq.Queue(
-    pubsub_client,
+    publisher_client, subscriber_client, PROJECT_ID,
     storage=psq.DatastoreStorage(datastore_client))
 
 
@@ -34,4 +38,5 @@ def main():
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     main()

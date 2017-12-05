@@ -16,19 +16,24 @@
 from contextlib import contextmanager
 from pickle import dumps
 
+from google.cloud import pubsub_v1
 import google.cloud.exceptions
-from mock import Mock, patch
-
+import google.cloud.pubsub_v1.subscriber.message
+import mock
 from psq import current_queue
 from psq.queue import Queue
 from psq.task import Task
-
 import pytest
 
 
-class MockMessage(object):
-    def __init__(self, data):
-        self.data = data
+def make_publisher_client():
+    return mock.create_autospec(
+        pubsub_v1.PublisherClient, instance=True)
+
+
+def make_subscriber_client():
+    return mock.create_autospec(
+        pubsub_v1.SubscriberClient, instance=True)
 
 
 class TestStorage(object):
@@ -46,155 +51,165 @@ def dummy_queue_func():
     return "Hello"
 
 
-def test_creation():
-    # Test the case where queue needs to create the topic.
-    pubsub = Mock()
-    topic = Mock()
-    topic.exists.return_value = False
-    pubsub.topic.return_value = topic
+def test_constructor_creates_topic():
+    publisher_client = make_publisher_client()
+    subscriber_client = make_subscriber_client()
 
-    q = Queue(pubsub)
+    publisher_client.get_topic.side_effect = (
+        google.cloud.exceptions.NotFound(None, None))
 
-    assert pubsub.topic.called
-    assert topic.create.called
-    assert q.topic == topic
+    q = Queue(publisher_client, subscriber_client, 'test-project')
 
-    sub = Mock()
-    sub.exists.return_value = False
+    publisher_client.create_topic.assert_called_once_with(q._get_topic_path())
 
 
-def test_get_or_create_subscription():
-    pubsub = Mock()
-    topic = Mock()
-    topic.exists.return_value = True
-    pubsub.topic.return_value = topic
+def test_constructor_existing_topic():
+    publisher_client = make_publisher_client()
+    subscriber_client = make_subscriber_client()
 
-    q = Queue(pubsub)
+    Queue(publisher_client, subscriber_client, 'test-project')
 
-    sub = Mock()
-    sub.exists.return_value = False
-
-    # Test the case where it needs to create the subcription.
-    with patch('google.cloud.pubsub.Subscription') as SubscriptionMock:
-        SubscriptionMock.return_value = sub
-        rsub = q._get_or_create_subscription()
-
-        assert rsub == sub
-        assert SubscriptionMock.called_with('psq-default-shared', topic)
-        assert sub.exists.called
-        assert sub.create.called
-
-    # Test case where subscription exists and it should re-use it.
-    with patch('google.cloud.pubsub.Subscription') as SubscriptionMock:
-        sub.reset_mock()
-        SubscriptionMock.return_value = sub
-        sub.exists.return_value = True
-        rsub = q._get_or_create_subscription()
-
-        assert rsub == sub
-        assert not sub.create.called
-
-    # Test case where subscription gets created after we check that it
-    # doesn't exist.
-
-    with patch('google.cloud.pubsub.Subscription') as SubscriptionMock:
-        sub.reset_mock()
-        SubscriptionMock.return_value = sub
-        sub.exists.return_value = False
-        sub.create.side_effect = google.cloud.exceptions.Conflict('')
-        rsub = q._get_or_create_subscription()
-
-        assert sub.create.called
-        assert rsub == sub
+    publisher_client.create_topic.assert_not_called()
 
 
-def test_creation_existing_topic():
-    # Test the case where queue needs to create the topic.
-    pubsub = Mock()
-    topic = Mock()
-    topic.exists.return_value = False
-    topic.create.side_effect = google.cloud.exceptions.Conflict('')
-    pubsub.topic.return_value = topic
+def test_constructor_conflict():
+    publisher_client = make_publisher_client()
+    subscriber_client = make_subscriber_client()
 
-    q = Queue(pubsub)
+    publisher_client.get_topic.side_effect = (
+        google.cloud.exceptions.NotFound(None, None))
+    publisher_client.create_topic.side_effect = (
+        google.cloud.exceptions.Conflict(None, None))
 
-    assert pubsub.topic.called
-    assert topic.create.called
-    assert q.topic == topic
+    q = Queue(publisher_client, subscriber_client, 'test-project')
+
+    publisher_client.get_topic.assert_called_once_with(
+        q._get_topic_path())
+    publisher_client.create_topic.assert_called_once_with(
+        q._get_topic_path())
+
+
+def make_queue(**kwargs):
+    publisher_client = make_publisher_client()
+    subscriber_client = make_subscriber_client()
+    return Queue(publisher_client, subscriber_client, 'test-project', **kwargs)
+
+
+def test_get_or_create_subscription_creates_new():
+    q = make_queue()
+    q.subscriber_client.get_subscription.side_effect = (
+        google.cloud.exceptions.NotFound(None, None))
+
+    subscription_path = q._get_or_create_subscription()
+
+    q.subscriber_client.get_subscription.assert_called_once_with(
+        subscription_path)
+    q.subscriber_client.create_subscription.assert_called_once_with(
+        subscription_path,
+        topic=q._get_topic_path())
+
+
+def test_get_or_create_subscription_existing():
+    q = make_queue()
+
+    subscription_path = q._get_or_create_subscription()
+
+    q.subscriber_client.get_subscription.assert_called_once_with(
+        subscription_path)
+    q.subscriber_client.create_subscription.assert_not_called()
+
+
+def test_get_or_create_subscription_conflict():
+    q = make_queue()
+
+    q.subscriber_client.get_subscription.side_effect = (
+        google.cloud.exceptions.NotFound(None, None))
+    q.subscriber_client.create_subscription.side_effect = (
+        google.cloud.exceptions.Conflict(None, None))
+
+    subscription_path = q._get_or_create_subscription()
+
+    q.subscriber_client.get_subscription.assert_called_once_with(
+        subscription_path)
+    q.subscriber_client.create_subscription.assert_called_once_with(
+        subscription_path,
+        topic=q._get_topic_path())
 
 
 def test_queue():
-    # Test queueing tasks.
-    with patch('psq.queue.Queue._get_or_create_topic'):
-        q = Queue(Mock())
-        q.storage.put_task = Mock()
+    storage = TestStorage()
+    q = make_queue(storage=storage)
 
-        r = q.enqueue(sum, 1, 2, arg='c')
-        assert q.topic.publish.called
-        assert q.storage.put_task.called
+    r = q.enqueue(sum, 1, 2, arg='c')
+    assert q.publisher_client.publish.called
 
-        t = q.storage.put_task.call_args[0][0]
-        assert t.f == sum
-        assert t.args == (1, 2)
-        assert t.kwargs == {'arg': 'c'}
-
-        assert r.task_id == t.id
+    task = storage.get_task(r.task_id)
+    assert task.f == sum
+    assert task.args == (1, 2)
+    assert task.kwargs == {'arg': 'c'}
 
 
-def test_dequeue():
-    # Test dequeueing (fetching) tasks.
-    with patch('psq.queue.Queue._get_or_create_topic'):
-        q = Queue(Mock())
-        t = Task('1', sum, (1, 2), {'arg': 'c'})
-        sub_mock = Mock()
-        q._get_or_create_subscription = Mock(return_value=sub_mock)
+def test_listen():
+    q = make_queue()
+    callback = mock.Mock()
 
-        # No messages
-        sub_mock.pull.return_value = []
+    future = q.listen(callback)
 
-        tasks = q.dequeue()
+    # Should create the subscription
+    assert q.subscription
 
-        assert sub_mock.pull.called
-        assert not tasks
+    # Should invoke the underlying pub/sub listen
+    q.subscriber_client.subscribe.assert_called_once_with(
+        q.subscription, callback=mock.ANY)
+    assert future == q.subscriber_client.subscribe.return_value
 
-        # One Message
-        sub_mock.pull.reset_mock()
-        sub_mock.pull.return_value = [
-            ('ack_id', MockMessage(dumps(t)))]
+    # Grab the callback and make sure the invoking it decodes the task and
+    # passes it to the callback.
+    wrapped_callback = q.subscriber_client.subscribe.call_args[1]['callback']
 
-        tasks = q.dequeue()
+    t = Task('1', sum, (1, 2), {'arg': 'c'})
+    message = mock.create_autospec(
+        google.cloud.pubsub_v1.subscriber.message.Message, instance=True)
+    message.data = dumps(t)
 
-        assert sub_mock.pull.called
-        sub_mock.acknowledge.assert_called_once_with(['ack_id'])
-        assert tasks[0].id == t.id
-        assert tasks[0].f == t.f
-        assert tasks[0].args == t.args
-        assert tasks[0].kwargs == t.kwargs
+    wrapped_callback(message)
 
-        # Bad message
-        sub_mock.pull.reset_mock()
-        sub_mock.acknowledge.reset_mock()
-        sub_mock.pull.return_value = [
-            ('ack_id', MockMessage('this is a bad pickle string'))]
+    message.ack.assert_called_once_with()
+    callback.assert_called_once_with(mock.ANY)
+    invoked_task = callback.call_args[0][0]
+    assert invoked_task.id == t.id
 
-        tasks = q.dequeue()
 
-        assert not tasks
-        assert sub_mock.pull.called
-        sub_mock.acknowledge.assert_called_once_with(['ack_id'])
+def test_listen_existing_subscription():
+    q = make_queue()
+    q.subscription = mock.sentinel.subscription
+
+    q.listen(mock.sentinel.callback)
+
+    # Should not create the subscription
+    assert not q.subscriber_client.create_subscription.called
+
+
+def test__pubsub_message_callback_bad_value():
+    callback = mock.Mock()
+    message = mock.create_autospec(
+        google.cloud.pubsub_v1.subscriber.message.Message, instance=True)
+    message.data = b'bad'
+
+    Queue._pubsub_message_callback(callback, message)
+
+    assert not callback.called
+    assert message.ack.called
 
 
 def test_context():
-    # Test queue-local context.
-    pubsub = Mock()
-    pubsub.topic.return_value = Mock()
-    q = Queue(pubsub)
+    q = make_queue()
 
     with q.queue_context():
         assert current_queue == q
 
     # Test additional context manager.
-    spy = Mock()
+    spy = mock.Mock()
 
     @contextmanager
     def extra_context():
@@ -208,27 +223,24 @@ def test_context():
 
 
 def test_cleanup():
-    pubsub = Mock()
-    pubsub.topic.return_value = Mock()
-    q = Queue(pubsub)
-
+    q = make_queue()
     q.cleanup()
 
 
 def test_synchronous_success():
-    q = Queue(pubsub=None, storage=TestStorage(), async=False)
+    q = make_queue(storage=TestStorage(), async=False)
     r = q.enqueue(sum, [1, 2])
     assert r.result() == 3
 
 
 def test_synchronous_fail():
-    q = Queue(pubsub=None, storage=TestStorage(), async=False)
+    q = make_queue(storage=TestStorage(), async=False)
     r = q.enqueue(sum, "2")
     with pytest.raises(TypeError):
         r.result()
 
 
 def test_string_function():
-    q = Queue(pubsub=None, storage=TestStorage(), async=False)
+    q = make_queue(storage=TestStorage(), async=False)
     r = q.enqueue('psq.queue_test.dummy_queue_func')
     assert r.result() == "Hello"

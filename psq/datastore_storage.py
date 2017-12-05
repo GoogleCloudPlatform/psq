@@ -16,8 +16,7 @@ from __future__ import absolute_import
 
 from datetime import datetime
 
-from google.cloud import datastore, exceptions
-from retrying import retry
+from google.cloud import datastore
 from six.moves import range
 
 from .storage import Storage
@@ -26,14 +25,6 @@ from .utils import _check_for_thread_safety, dumps, loads
 
 
 DATASTORE_KIND_PREFIX = 'psq'
-
-
-_RETRY = retry(
-    stop_max_attempt_number=5,
-    wait_exponential_multiplier=1000,
-    wait_exponential_max=10000,
-    retry_on_exception=lambda e: isinstance(e, exceptions.ServerError)
-)
 
 
 class DatastoreStorage(Storage):
@@ -49,19 +40,16 @@ class DatastoreStorage(Storage):
         _check_for_thread_safety(datastore)
         self.datastore = datastore
 
-    @_RETRY
     def _get_task_key(self, task_id):
         return self.datastore.key(
             '{}-task'.format(DATASTORE_KIND_PREFIX), task_id)
 
-    @_RETRY
     def get_task(self, task_id):
         entity = self.datastore.get(self._get_task_key(task_id))
         if not entity:
             return None
         return loads(entity['data'])
 
-    @_RETRY
     def put_task(self, task):
         if task.status not in self.store_on_status:
             return
@@ -75,11 +63,9 @@ class DatastoreStorage(Storage):
 
         self.datastore.put(entity)
 
-    @_RETRY
     def delete_task(self, task_id):
         self.datastore.delete(self._get_task_key(task_id))
 
-    @_RETRY
     def list_tasks(self):
         q = self.datastore.query(
             kind='{}-task'.format(DATASTORE_KIND_PREFIX),
@@ -87,7 +73,6 @@ class DatastoreStorage(Storage):
 
         return q.fetch()
 
-    @_RETRY
     def delete_tasks(self):
         q = self.datastore.query(
             kind='{}-task'.format(DATASTORE_KIND_PREFIX),

@@ -15,17 +15,16 @@
 from __future__ import absolute_import
 
 from contextlib import contextmanager
+import functools
 import logging
 from uuid import uuid4
 
-from google.cloud import pubsub
 import google.cloud.exceptions
 
 from .globals import queue_context
 from .storage import Storage
 from .task import Task, TaskResult
-from .utils import (_check_for_thread_safety, dumps, measure_time, unpickle,
-                    UnpickleError)
+from .utils import dumps, measure_time, unpickle, UnpickleError
 
 
 logger = logging.getLogger(__name__)
@@ -34,54 +33,62 @@ PUBSUB_OBJECT_PREFIX = 'psq'
 
 
 class Queue(object):
-    def __init__(self, pubsub, name='default', storage=None,
-                 extra_context=None, async=True):
+    def __init__(self, publisher_client, subscriber_client, project,
+                 name='default', storage=None, extra_context=None, async=True):
         self._async = async
         self.name = name
+        self.project = project
 
         if self._async:
-            _check_for_thread_safety(pubsub)
-            self.pubsub = pubsub
-            self.topic = self._get_or_create_topic()
+            self.publisher_client = publisher_client
+            self.subscriber_client = subscriber_client
+            self.topic_path = self._get_or_create_topic()
 
         self.storage = storage or Storage()
         self.subscription = None
         self.extra_context = extra_context if extra_context else dummy_context
 
-    def _get_or_create_topic(self):
+    def _get_topic_path(self):
         topic_name = '{}-{}'.format(PUBSUB_OBJECT_PREFIX, self.name)
+        return self.publisher_client.topic_path(self.project, topic_name)
 
-        topic = self.pubsub.topic(topic_name)
+    def _get_or_create_topic(self):
+        topic_path = self._get_topic_path()
 
-        if not topic.exists():
-            logger.info("Creating topic {}".format(topic_name))
+        try:
+            self.publisher_client.get_topic(topic_path)
+        except google.cloud.exceptions.NotFound:
+            logger.info("Creating topic {}".format(topic_path))
             try:
-                topic.create()
+                self.publisher_client.create_topic(topic_path)
             except google.cloud.exceptions.Conflict:
                 # Another process created the topic before us, ignore.
                 pass
 
-        return topic
+        return topic_path
 
     def _get_or_create_subscription(self):
         """Workers all share the same subscription so that tasks are
         distributed across all workers."""
+        topic_path = self._get_topic_path()
         subscription_name = '{}-{}-shared'.format(
             PUBSUB_OBJECT_PREFIX, self.name)
+        subscription_path = self.subscriber_client.subscription_path(
+            self.project, subscription_name)
 
-        subscription = pubsub.Subscription(
-            subscription_name, topic=self.topic)
-
-        if not subscription.exists():
+        try:
+            self.subscriber_client.get_subscription(subscription_path)
+        except google.cloud.exceptions.NotFound:
             logger.info("Creating shared subscription {}".format(
                 subscription_name))
             try:
-                subscription.create()
+                self.subscriber_client.create_subscription(
+                    subscription_path, topic=topic_path)
             except google.cloud.exceptions.Conflict:
                 # Another worker created the subscription before us, ignore.
                 pass
 
-        return subscription
+        return subscription_path
 
     def enqueue(self, f, *args, **kwargs):
         """Enqueues a function for the task queue to execute."""
@@ -98,7 +105,7 @@ class Queue(object):
         data = dumps(task)
 
         if self._async:
-            self.topic.publish(data)
+            self.publisher_client.publish(self.topic_path, data=data)
             logger.info('Task {} queued.'.format(task.id))
         else:
             unpickled_task = unpickle(data)
@@ -111,30 +118,24 @@ class Queue(object):
 
         return TaskResult(task.id, self)
 
-    def dequeue(self, max=1, block=False):
-        """Returns tasks to be consumed by a worker."""
+    @staticmethod
+    def _pubsub_message_callback(task_callback, message):
+        message.ack()
+
+        try:
+            task = unpickle(message.data)
+            task_callback(task)
+        except UnpickleError:
+            logger.exception('Failed to unpickle task {}.'.format(message))
+
+    def listen(self, callback):
         if not self.subscription:
             self.subscription = self._get_or_create_subscription()
 
-        messages = self.subscription.pull(
-            return_immediately=not block, max_messages=max)
-
-        if not messages:
-            return None
-
-        ack_ids = [x[0] for x in messages]
-
-        tasks = []
-        for x in messages:
-            try:
-                task = unpickle(x[1].data)
-                tasks.append(task)
-            except UnpickleError:
-                logger.exception('Failed to unpickle task {}.'.format(x[0]))
-
-        self.subscription.acknowledge(ack_ids)
-
-        return tasks
+        message_callback = functools.partial(
+            self._pubsub_message_callback, callback)
+        return self.subscriber_client.subscribe(
+            self.subscription, callback=message_callback)
 
     def cleanup(self):
         """Does nothing for this queue, but other queues types may use this to
