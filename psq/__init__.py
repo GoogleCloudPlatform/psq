@@ -27,7 +27,7 @@ from .globals import current_queue, current_task, queue_context, task_context
 from .queue import Queue
 from .storage import Storage
 from .task import Retry, Task, TaskResult
-from .worker import MultiprocessWorker, Worker
+from .worker import Worker
 
 
 __all__ = [
@@ -37,7 +37,6 @@ __all__ = [
     'TaskResult',
     'Retry',
     'Worker',
-    'MultiprocessWorker',
     'Storage',
     'DatastoreStorage',
     'current_queue',

@@ -15,7 +15,7 @@
 import logging
 from uuid import uuid4
 
-from google.cloud import pubsub
+import google.cloud.exceptions
 
 from . import queue
 from . import storage
@@ -30,27 +30,33 @@ class BroadcastQueue(queue.Queue):
     This is in contrast with the standard queue which distributes a task to a
     single worker.
     """
-    def __init__(self, pubsub, name='broadcast', **kwargs):
+    def __init__(self, publisher_client, subscriber_client, project,
+                 name='broadcast', **kwargs):
         super(BroadcastQueue, self).__init__(
-            pubsub, name=name, storage=storage.Storage(), **kwargs)
+            publisher_client, subscriber_client, project, name=name,
+            storage=storage.Storage(), **kwargs)
 
     def _get_or_create_subscription(self):
         """In a broadcast queue, workers have a unique subscription ensuring
         that every worker recieves a copy of every task."""
+        topic_path = self._get_topic_path()
         subscription_name = '{}-{}-{}-worker'.format(
             queue.PUBSUB_OBJECT_PREFIX, self.name, uuid4().hex)
+        subscription_path = self.subscriber_client.subscription_path(
+            self.project, subscription_name)
 
-        subscription = pubsub.Subscription(subscription_name, topic=self.topic)
-
-        if not subscription.exists():
+        try:
+            self.subscriber_client.get_subscription(subscription_path)
+        except google.cloud.exceptions.NotFound:
             logger.info("Creating worker subscription {}".format(
                 subscription_name))
-            subscription.create()
+            self.subscriber_client.create_subscription(
+                subscription_path, topic_path)
 
-        return subscription
+        return subscription_path
 
     def cleanup(self):
         """Deletes this worker's subscription."""
         if self.subscription:
             logger.info("Deleting worker subscription...")
-            self.subscription.delete()
+            self.subscriber_client.delete_subscription(self.subscription)

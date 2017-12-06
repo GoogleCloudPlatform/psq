@@ -17,7 +17,6 @@ from __future__ import absolute_import
 from contextlib import contextmanager
 from functools import partial
 import logging
-import sys
 import time
 
 try:
@@ -64,30 +63,3 @@ def measure_time():
         te = time.time()
         logger.info('{} Took {:.2f} sec'.format(
             props.get('summary', ''), te - ts))
-
-
-def _check_for_thread_safety(client):
-    try:
-        # Is this client's module using grpc/gax?
-        client_module_name = client.__module__
-        client_module = sys.modules[client_module_name]
-        if getattr(client_module, '_USE_GAX', True):
-            return
-
-        connection_module_name = client.connection.__module__
-        connection_module = sys.modules[connection_module_name]
-
-        if getattr(connection_module, '_USE_GRPC', True):
-            return
-
-        # Is the connection is using httplib2shim?
-        if client.connection.http.__class__.__module__ == 'httplib2shim':
-            return
-
-        raise ValueError(
-            'Client object {} is not threadsafe. psq requires clients to be '
-            'threadsafe. You can either ensure grpc is installed or use '
-            'httplib2shim.'.format(client))
-
-    except (KeyError, AttributeError):
-        pass

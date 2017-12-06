@@ -12,51 +12,70 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mock import Mock, patch
-
+from google.cloud import pubsub_v1
+import google.cloud.exceptions
+import mock
 from psq.broadcast_queue import BroadcastQueue
+
+
+def make_publisher_client():
+    return mock.create_autospec(
+        pubsub_v1.PublisherClient, instance=True)
+
+
+def make_subscriber_client():
+    return mock.create_autospec(
+        pubsub_v1.SubscriberClient, instance=True)
 
 
 def test_cleanup():
     # Broadcast queue should delete its own subscription, as it's not
     # shared.
-    pubsub = Mock()
-    pubsub.topic.return_value = Mock()
-    q = BroadcastQueue(pubsub)
-    q.subscription = Mock()
+    publisher_client = make_publisher_client()
+    subscriber_client = make_subscriber_client()
+    q = BroadcastQueue(
+        publisher_client, subscriber_client, 'test-project')
+    q.subscription = 'test-subscription'
     q.cleanup()
-    assert q.subscription.delete.called
+    subscriber_client.delete_subscription.assert_called_once_with(
+        'test-subscription')
 
+
+def test_cleanup_no_subscription():
     # test without subscription
-    q.subscription = None
+    publisher_client = make_publisher_client()
+    subscriber_client = make_subscriber_client()
+    q = BroadcastQueue(
+        publisher_client, subscriber_client, 'test-project')
     q.cleanup()
+    subscriber_client.delete_subscription.assert_not_called()
 
 
 def test_create_subscription():
-    pubsub = Mock()
-    pubsub.topic.return_value = Mock()
-    q = BroadcastQueue(pubsub)
+    publisher_client = make_publisher_client()
+    subscriber_client = make_subscriber_client()
+    q = BroadcastQueue(
+        publisher_client, subscriber_client, 'test-project')
 
-    sub = Mock()
-    sub.exists.return_value = False
+    subscriber_client.get_subscription.side_effect = (
+        google.cloud.exceptions.NotFound(None, None))
+    subscriber_client.subscription_path.side_effect = (
+        lambda project, topic: '{}/{}'.format(project, topic))
 
-    # Test to make sure it creates a unique (non-shared) subscription.
-    with patch('google.cloud.pubsub.Subscription') as SubscriptionMock:
-        SubscriptionMock.return_value = sub
-        rsub = q._get_or_create_subscription()
+    subscription_path = q._get_or_create_subscription()
 
-        assert rsub == sub
-        assert 'worker' in SubscriptionMock.call_args[0][0]
-        assert 'broadcast' in SubscriptionMock.call_args[0][0]
-        assert sub.exists.called
-        assert sub.create.called
+    assert subscriber_client.create_subscription.called
+    assert 'worker' in subscription_path
+    assert 'broadcast' in subscription_path
 
-    # Test reusing existing
-    with patch('google.cloud.pubsub.Subscription') as SubscriptionMock:
-        sub.reset_mock()
-        SubscriptionMock.return_value = sub
-        sub.exists.return_value = True
-        rsub = q._get_or_create_subscription()
 
-        assert rsub == sub
-        assert not sub.create.called
+def test_existing_subscription():
+    publisher_client = make_publisher_client()
+    subscriber_client = make_subscriber_client()
+    q = BroadcastQueue(
+        publisher_client, subscriber_client, 'test-project')
+
+    q._get_or_create_subscription()
+
+    assert subscriber_client.get_subscription.called
+    assert not subscriber_client.create_subscription.called
