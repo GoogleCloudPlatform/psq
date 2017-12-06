@@ -52,15 +52,16 @@ Then, create a pubsub client and a queue:
 
 .. code:: python
 
-    from google.cloud import pubsub
+    from google.cloud import pubsub_v1
     import psq
 
 
-    PROJECT_ID = 'your-project-id'
+    project = 'your-project-id'
 
-    client = pubsub.Client(project=PROJECT_ID)
+    publisher = pubsub_v1.PublisherClient()
+    subscriber = pubsub_v1.SubscriberClient()
 
-    q = psq.Queue(client)
+    q = psq.Queue(publisher, subscriber, project)
 
 Now you can enqueue tasks:
 
@@ -74,17 +75,19 @@ In order to get task results, you have to configure storage:
 
 .. code:: python
 
-    from google.cloud import pubsub
+    from google.cloud import pubsub_v1
+    from google.cloud import datastore
     import psq
 
 
-    PROJECT_ID = 'your-project-id'
+    project = 'your-project-id'
 
-    ps_client = pubsub.Client(project=PROJECT_ID)
-    ds_client = datastore.Client(project=PROJECT_ID)
+    publisher = pubsub_v1.PublisherClient()
+    subscriber = pubsub_v1.SubscriberClient()
+    ds = datastore.Client()
 
     q = psq.Queue(
-        ps_client,
+        publisher, subscriber, project,
         storage=psq.DatastoreStorage(ds_client))
 
 With storage configured, you can get the result of a task:
@@ -98,8 +101,8 @@ You can also define multiple queues:
 
 .. code:: python
 
-    fast = psq.Queue(client, 'fast')
-    slow = psq.Queue(client, 'slow')
+    fast = psq.Queue(publisher, subscriber, project, 'fast')
+    slow = psq.Queue(publisher, subscriber, project, 'slow')
 
 Things to note
 --------------
@@ -166,7 +169,7 @@ server.
 
 .. code:: python
 
-    broadcast_q = psq.BroadcastQueue(client)
+    broadcast_q = psq.BroadcastQueue(publisher, subscriber, project)
 
     def restart_apache_task():
         call(["apachectl", "restart"])
