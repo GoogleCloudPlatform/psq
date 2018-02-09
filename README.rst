@@ -84,7 +84,7 @@ In order to get task results, you have to configure storage:
 
     publisher = pubsub_v1.PublisherClient()
     subscriber = pubsub_v1.SubscriberClient()
-    ds = datastore.Client()
+    ds_client = datastore.Client()
 
     q = psq.Queue(
         publisher, subscriber, project,
