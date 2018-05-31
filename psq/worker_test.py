@@ -23,7 +23,7 @@ class MockQueue(Queue):
         self.storage = None
         self.extra_context = dummy_context
         self.subscriber = mock.Mock()
-        self.subscriber.future.result.side_effect = KeyboardInterrupt()
+        self.subscriber.result.side_effect = KeyboardInterrupt()
 
     def enqueue_task(self, task):
         self._tasks.append(task)
@@ -45,8 +45,8 @@ def test_worker_listen():
     worker.listen()
 
     assert t.execute.called
-    assert q.subscriber.future.result.called
-    assert q.subscriber.close.called
+    assert q.subscriber.result.called
+    assert q.subscriber.cancel.called
 
 
 def test_worker_listen_failed_start():

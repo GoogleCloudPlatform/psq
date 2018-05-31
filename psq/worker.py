@@ -29,16 +29,16 @@ class Worker(object):
         self.max_sequential_errors = 5
 
     def listen(self):
-        logger.info('Listening for tasks, press Ctrl+C to exit.')
-        subscriber = None
+        future = None
 
         try:
-            subscriber = self.queue.listen(self.run_task)
-            subscriber.future.result()
+            future = self.queue.listen(self.run_task)
+            logger.info('Listening for tasks, press Ctrl+C to exit.')
+            future.result()
 
         except KeyboardInterrupt:
-            if subscriber is not None:
-                subscriber.close()
+            if future is not None:
+                future.cancel()
             logger.info('Stopped listening for tasks.')
 
         finally:

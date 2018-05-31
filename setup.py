@@ -23,15 +23,15 @@ long_description = open('README.rst', 'r', encoding='utf-8').read()
 setup(
     name='psq',
 
-    version='0.6.0',
+    version='0.7.0',
 
     description='A simple task queue using Google Cloud Pub/Sub',
     long_description=long_description,
 
     url='https://github.com/GoogleCloudPlatform/psq',
 
-    author='Jon Wayne Parrott',
-    author_email='jonwayne@google.com',
+    author='Thea Flowers',
+    author_email='theaflowers@google.com',
 
     license='Apache Software License',
 
@@ -51,7 +51,8 @@ setup(
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
 
         'Operating System :: POSIX',
         'Operating System :: MacOS',
@@ -63,10 +64,10 @@ setup(
     packages=['psq'],
 
     install_requires=[
-        'google-cloud-pubsub>=0.29.0',
+        'google-cloud-pubsub>=0.35.2',
         'google-cloud-datastore>=1.0.0,<=2.0.0',
         'werkzeug>=0.10.0,<1.0.0',
-        'click>=4.0,<5.0',
+        'click>=4.0',
         'colorlog>=2.6.0,<3.0.0'],
 
     entry_points={

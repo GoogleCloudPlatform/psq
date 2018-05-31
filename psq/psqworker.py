@@ -24,6 +24,8 @@ import sys
 import click
 from colorlog import ColoredFormatter
 
+logger = logging.getLogger(__name__)
+
 
 def setup_logging():  # pragma: no cover
     root_logger = logging.getLogger()
@@ -86,10 +88,6 @@ def main(path, pid, queue):
     if pid:
         with open(os.path.expanduser(pid), "w") as f:
             f.write(str(os.getpid()))
-
-    # temporary hack
-    here = os.path.dirname(os.path.abspath(__file__))
-    sys.path = [x for x in sys.path if not x == here]
 
     if not path:
         path = os.getcwd()
