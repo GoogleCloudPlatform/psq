@@ -228,19 +228,19 @@ def test_cleanup():
 
 
 def test_synchronous_success():
-    q = make_queue(storage=TestStorage(), async=False)
+    q = make_queue(storage=TestStorage(), asynchronous=False)
     r = q.enqueue(sum, [1, 2])
     assert r.result() == 3
 
 
 def test_synchronous_fail():
-    q = make_queue(storage=TestStorage(), async=False)
+    q = make_queue(storage=TestStorage(), asynchronous=False)
     r = q.enqueue(sum, "2")
     with pytest.raises(TypeError):
         r.result()
 
 
 def test_string_function():
-    q = make_queue(storage=TestStorage(), async=False)
+    q = make_queue(storage=TestStorage(), asynchronous=False)
     r = q.enqueue('psq.queue_test.dummy_queue_func')
     assert r.result() == "Hello"
