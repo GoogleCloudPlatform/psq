@@ -34,7 +34,8 @@ PUBSUB_OBJECT_PREFIX = 'psq'
 
 class Queue(object):
     def __init__(self, publisher_client, subscriber_client, project,
-                 name='default', storage=None, extra_context=None, asynchronous=True):
+                 name='default', storage=None, extra_context=None,
+                 asynchronous=True):
         self._async = asynchronous
         self.name = name
         self.project = project
