@@ -68,7 +68,7 @@ setup(
         'google-cloud-datastore>=1.0.0,<=2.0.0',
         'werkzeug>=0.10.0,<1.0.0',
         'click>=4.0',
-        'colorlog>=2.6.0,<3.0.0'],
+        'colorlog>=2.6.0,<5.0.0'],
 
     entry_points={
         'console_scripts': [
