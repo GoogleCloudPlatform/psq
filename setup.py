@@ -23,7 +23,7 @@ long_description = open('README.rst', 'r', encoding='utf-8').read()
 setup(
     name='psq',
 
-    version='0.7.0',
+    version='0.8.0',
 
     description='A simple task queue using Google Cloud Pub/Sub',
     long_description=long_description,
