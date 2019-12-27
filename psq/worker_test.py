@@ -14,6 +14,7 @@
 
 import mock
 from psq.queue import dummy_context, Queue
+from psq.task import Task
 from psq.worker import Worker
 
 
@@ -39,7 +40,7 @@ def test_worker_listen():
     q = MockQueue()
     worker = Worker(queue=q)
 
-    t = mock.Mock()
+    t = mock.create_autospec(Task, instance=True)
     q.enqueue_task(t)
 
     worker.listen()
