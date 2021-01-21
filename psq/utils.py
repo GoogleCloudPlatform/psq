@@ -18,6 +18,16 @@ from contextlib import contextmanager
 from functools import partial
 import logging
 import time
+import io
+import builtins
+
+safe_builtins = {
+    'range',
+    'complex',
+    'set',
+    'frozenset',
+    'slice',
+}
 
 try:
     import cPickle as pickle
@@ -33,6 +43,20 @@ loads = pickle.loads
 class UnpickleError(ValueError):
     pass
 
+class RestrictedUnpickler(pickle.Unpickler):
+
+    def find_class(self, module, name):
+        """Only allow safe classes from builtins"""
+        if module == "builtins" and name in safe_builtins:
+            return getattr(builtins, name)
+        """Forbid everything else"""
+        raise pickle.UnpicklingError("global '%s.%s' is forbidden" %
+                                     (module, name))
+
+def rloads(s):
+    """Helper function analogous to pickle.loads()"""
+    return RestrictedUnpickler(io.BytesIO(s)).load()
+
 
 def unpickle(pickled_string):
     """Unpickles a string, but raises a unified UnpickleError in case anything
@@ -42,7 +66,7 @@ def unpickle(pickled_string):
     IndexError, TypeError, KeyError, etc.)
     """
     try:
-        obj = loads(pickled_string)
+        obj = loads(rloads(pickled_string))
     except Exception as e:
         raise UnpickleError('Could not unpickle', pickled_string, e)
     return obj
