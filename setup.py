@@ -66,7 +66,7 @@ setup(
     install_requires=[
         'google-cloud-pubsub>=0.35.2',
         'google-cloud-datastore>=1.0.0,<=2.0.0',
-        'werkzeug>=0.10.0,<1.0.0',
+        'werkzeug>=2.2.3,<2.3.0',
         'click>=4.0',
         'colorlog>=2.6.0,<3.0.0'],
 
